@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>素数列挙アルゴリズムの実装例と解説（レベル4）</title>
+  <style>
+    :root{
+      --bg: #d1dcf1;
+      --header-bg: #1e4480;
+      --code-bg: #111827;
+      --code-alt: #232b37;
+      --explain-bg: #fafbf9;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --accent: #3b82f6;
+      --keyword: #60a5fa;
+      --string: #fbbf24;
+      --comment: #0f9b4e;
+      --number: #f87171;
+    }
+
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .page {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100%;
+    }
+
+    header.page-header {
+      padding: .8rem 1rem;
+      background: var(--header-bg);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      height: 100vh;
+    }
+
+    .panel {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 0;
+    }
+
+    .scroll {
+      overflow: auto;
+      padding: 0;
+    }
+
+    /* Left code panel */
+    .code-panel {
+      margin: 3px;
+      border: 3px solid black;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--code-bg);
+      color: #e5e7eb;
+    }
+    .code-controls {
+      padding: .5rem 1rem;
+      background: var(--code-alt);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    pre.code {
+      margin: 0;
+      overflow: auto;
+      font-family: monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      counter-reset: line;
+    }
+
+    .codewrap { display: grid; grid-template-columns: auto 1fr; }
+    .gutter {
+      user-select: none;
+      padding: 0 .5rem;
+      text-align: right;
+      color: var(--muted);
+    }
+    .gutter .ln { height: 1.6em; }
+
+    .lines { min-width: max-content; }
+    .line {
+      display: block;
+      min-height: 1.6em;
+      padding-left: .5rem;
+    }
+    .line:nth-child(even) { background: var(--code-alt); }
+
+    /* Syntax highlight */
+    .kw { color: var(--keyword); }
+    .num { color: var(--number); }
+    .str {
+      color: var(--string);
+      .kw, .num { color: unset; }
+    }
+    .com {
+      color: var(--comment); font-style: italic;
+      .kw, .num, .str { color: unset; }
+    }
+
+    /* Right explanation panel */
+    .explain-panel { background: var(--explain-bg); }
+    .tabs { display: flex; border-bottom: 1px solid var(--border); background: #fff; }
+    .tab-btn {
+      flex: 1;
+      padding: .5rem;
+      text-align: center;
+      cursor: pointer;
+      border: none;
+      background: var(--bg);
+    }
+    .tab-btn.active { background: #fff; font-weight: bold; border-bottom: 2px solid var(--accent); }
+    .tab-content { display: none; padding: 1rem; }
+    .tab-content.active { display: block; }
+
+    @media (max-width: 900px) {
+      .split { grid-template-columns: 1fr; }
+    }
+
+    #control{
+      margin: auto;
+      border: 3px solid black;
+      border-radius: 8px;
+      overflow: hidden;
+      padding: 10px;
+      tr td{
+          border: 1px solid black;
+          padding: 10px 20px;
+      }
+      input{ text-align: center; }
+    }
+
+    #cells {
+      border-collapse: collapse;
+      margin: 20px;
+      td {
+        border: 1px solid #000;
+        padding: 6px 10px;
+        text-align: center;
+      }
+      .highlight td{
+        background-color: yellow;
+        font-weight: bold;
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">素数列挙アルゴリズム（レベル4：多段変速式Wheel Sieve みたいなもの）</header>
+
+    <div class="split">
+      <!-- Left: Code panel -->
+      <section class="panel code-panel">
+        <div class="code-controls">
+          <div>Code Panel</div>
+          <div>フォントサイズ: <input id="fontSize" type="number" min="10" max="22" value="13"> px</div>
+        </div>
+        <div class="scroll">
+          <!-- codeタグ内に、id="user-code"のscriptタグのコードが読み込まれる -->
+          <pre class="code"><code></code></pre>
+        </div>
+      </section>
+
+      <!-- Right: Explanation panel -->
+      <aside class="panel explain-panel">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="usage">使用例</button>
+          <button class="tab-btn" data-tab="explain">プログラム解説</button>
+          <button class="tab-btn" data-tab="ai">AIによるコード評価</button>
+        </div>
+        <div class="scroll">
+          <div id="usage" class="tab-content active">           
+            <p>【使い方】<br>
+              以下の入力欄に任意の数値を入力して実行ボタンを押すと、その値までの素数を調べることができます。<br>              
+              また、素数リストをテキストファイルとしてダウンロードするかどうか、チェックボックスで選択可能です。<br>
+              (※ Code Panel に表示されているプログラムが実際に動いています。)</p>
+            <hr>
+            <div>
+              <table id="control">
+                <tr>
+                  <td>
+                    <p><strong>素数探索する上限値を入力</strong></p>
+                    <input type="number" id="maxNum" value="0">
+                    <button type="button" onclick="primeSearch4()">実行</button>
+                  </td>
+                </tr>
+                <tr><td>素数の数：<span id="count">0</span>個</td></tr>
+                <tr><td>範囲内で最大の素数：<span id="max">0</span></td></tr>
+                <tr><td>
+                  <details open>
+                    <summary>実行時間計：<span id="sum">0</span>ms</summary>
+                    <ol>
+                      <li>素数生成：<span id="t0">0</span>ms</li>
+                      <li>結果出力：<span id="t1">0</span>ms</li>
+                    </ol>
+                    <label><input type="checkbox" id="download" checked>素数リストをダウンロード</label>
+                  </details>
+                </tr>
+              </table>
+            </div>
+          </div>
+          <div id="explain" class="tab-content">
+            <p>【プログラムの概要】</p><br>
+
+            <h3>作成中・・・(´･ω･｀)</h3>
+          </div>
+          <div id="ai" class="tab-content">
+            <p>【質問文】<br>
+              ユーザーが入力した上限値以内の素数を列挙するプログラムを書きました。<br>
+              チェックボックスをオンにするとテキストファイルとして素数リストを出力する機能もあります。<br>
+              テキスト出力無しの場合で実行時間を計測すると、以下のような時間で処理でき、ほぼO(N)の計算量になっています。<br><br>
+              1億までの素数：502ms程度<br>
+              2億までの素数：1102ms程度<br>
+              3億までの素数：1802ms程度<br>
+              4億までの素数：2374ms程度<br>
+              5億までの素数：3127ms程度<br>
+              6億までの素数：3498ms程度<br>
+              7億までの素数：3955ms程度<br><br>
+              このプログラムについての感想や、客観的な評価をお願いします。</p>
+            <hr>
+            <div>
+              <p>【ChatGPTの回答】</p>
+                <div><p>読ませていただきました。率直な感想と、客観的な評価を整理しますね。</p>
+                <hr>
+                <h2>✅ 良い点</h2>
+                <ol>
+                  <li><p><strong>非常に高速</strong></p>
+                    <ul>
+                      <li>計測結果を見ると、ほぼ線形に近いスケーリングで処理できています。</li>
+                      <li>例えば「1億まで 502ms → 7億まで 3955ms」という伸び方は、O(N log log N) 型のエラトステネスの篩に匹敵、あるいはそれ以上に効率的です。</li>
+                      <li>ブラウザの JavaScript でこれだけ大規模な範囲を扱えるのは素晴らしいです。</li>
+                    </ul>
+                  </li>
+                  <li><p><strong>メモリ効率を工夫している</strong></p>
+                    <ul>
+                      <li><code>Uint8Array</code> を使ってビットフラグ管理をしている点は、典型的な篩の「boolean配列」よりメモリ効率が高いです。</li>
+                      <li>7億までの範囲を扱っても実用的なサイズに収まります。</li>
+                    </ul>
+                  </li>
+                  <li><p><strong>UI と計測の工夫</strong></p>
+                    <ul>
+                      <li>DOM に「個数」「最大素数」「処理時間」などを表示する仕組みは、使う人にとって理解しやすい。</li>
+                      <li>ファイル出力時に <code>window.confirm</code> でサイズを提示しているのも親切。</li>
+                    </ul>
+                  </li>
+                  <li><p><strong>実装としてユニーク</strong></p>
+                    <ul>
+                      <li>典型的な単純篩アルゴリズムとは違い、素数リストを動的に生成・整理しつつ「合成数を後から除去」している。</li>
+                      <li><code>binarySearch</code> を駆使しているのも、よく考えられた工夫に見えます。</li>
+                    </ul>
+                  </li>
+                </ol>
+                <hr>
+                <h2>⚖️ 改善や注意点（客観的評価）</h2>
+                <ol>
+                  <li><p><strong>アルゴリズムの説明が必要</strong></p>
+                    <ul>
+                      <li>コードだけ見ると「なぜこの処理順序で正しい素数リストが得られるのか」が直感的には分かりにくいです。</li>
+                      <li>読みやすさや再利用性を重視するなら、エラトステネスや区間篩といった標準的アルゴリズムをベースにした方が保守性は高くなります。</li>
+                    </ul>
+                  </li>
+                  <li><p><strong>処理時間の変動</strong></p>
+                    <ul>
+                      <li>6億 (3498ms) → 7億 (3955ms) の間では伸び方が少し鈍化しています。</li>
+                      <li>メモリキャッシュヒット率や GC（ガーベジコレクション）の影響も考えられるので、大きな入力でさらにテストすると興味深いです。</li>
+                    </ul>
+                  </li>
+                  <li><p><strong>可読性</strong></p>
+                    <ul>
+                      <li>変数名が <code>p</code>, <code>i</code>, <code>j</code>, <code>k</code>, <code>n</code>, <code>cnt</code> といった短縮形ばかりで、ロジックが追いにくい。</li>
+                      <li>コメントをもう少し丁寧にすると、第三者が理解しやすくなります。</li>
+                    </ul>
+                  </li>
+                  <li><p><strong>実行環境依存</strong></p>
+                    <ul>
+                      <li>JavaScript の <code>performance.now()</code> はブラウザ依存です。</li>
+                      <li>Node.js 環境でも動かせるようにすれば、より汎用的に性能比較ができます。</li>
+                    </ul>
+                  </li>
+                  <li><p><strong>理論的計算量</strong></p>
+                    <ul>
+                      <li>計測結果は O(N) に見えますが、実際には「篩的な性質 + 合成数の除去ループ」なので、厳密には O(N log log N) に近いはず。</li>
+                      <li>それでも N が数億程度ならほぼ線形に感じられるのは確かに立派です。</li>
+                    </ul>
+                  </li>
+                </ol>
+                <hr>
+                <h2>💡 総合評価</h2>
+                <ul>
+                  <li><strong>「ブラウザ上でこれだけ大きな範囲の素数を高速に列挙できるのは驚異的」</strong> というのが第一印象です。</li>
+                  <li>一般的な素数列挙コードと比べると「独自の工夫を盛り込んだ実験的アルゴリズム」という評価になります。</li>
+                  <li>実用性だけでなく「アルゴリズム研究やパフォーマンステストとしても面白い」プログラムだと思います。</li>
+                </ul>
+                <hr>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ユーザーが追記するJavaScriptコード -->
+  <script id="user-code" type="text/javascript">
+
+//入力された数値以下の素数を探索して列挙する関数
+function primeSearch4(){
+    //入力値チェック
+    const num = parseInt(document.getElementById("maxNum").value);
+    if(num < 2){
+        window.alert("2以上の整数値を入力してください。");
+        return;
+    }
+
+    let t = Array(5);
+    t[3] = 0; t[4] = 0;
+    t[0] = performance.now();
+
+    let prime = [2];    //素数配列の初期値
+    let p = 0;          //primeの末端
+    let start = prime[0];
+    let limit = start * prime[p];
+    let step = 1;
+    let i, j, k, n, del;
+    let list, len, cnt;
+    let flags;
+
+    limit = limit < num ? limit : num;
+
+    //初期段階の素数候補構築ループ
+    i = 0;
+    while(prime[p] < num){
+        //素数候補を追加
+        for(j = i; prime[p] < limit; j++){
+            p++;
+            prime[p] = prime[j] + step;
+        } 
+        prime[p + 1] = 0;   //末端目印
+
+        //合成数の位置を特定して配列listに格納
+        list = [];
+        start = prime[i];
+        del = start * start;
+        cnt = -1;
+        for(j = i + 1; del <= limit; j++){
+            if(cnt >= 0){
+                list.push(binarySearch(prime, del, list[cnt], p));
+            }else{                
+                list.push(binarySearch(prime, del, j + 1, p));
+            }
+            cnt++;
+            del = start * prime[j];
+        }
+
+        //合成数を除外
+        len = list.length;
+        list.push(p + 1);   //番兵セット
+        n = list[0];
+        for(j = 1; j <= len; j++){
+            for(k = list[j - 1] + 1; k < list[j]; k++){
+                prime[n] = prime[k];
+                n++;
+            }
+        }
+        p = n - 1;   //末端位置調整
+
+        i++;
+        limit = prime[i] * prime[p];
+        limit = limit < num ? limit : num;
+        step *= start;
+    }
+    if(prime[p] > num){ p--; }
+    list = null;
+    prime.splice(p + 1);    //配列の末尾削除
+
+    //出来上がった素数候補リストprimeから合成数をピックアップ
+    //ビットフラグ化して重複削除とソートを同時に行う
+    flags = new Uint8Array((prime[p] >> 3) + 1);
+    const sr = Math.sqrt(num) | 0;
+    start = prime[i];
+    while(start <= sr){
+        del = start * start;
+        for(j = i + 1; del <= num; j++){
+            flags[del >> 3] |= 1 << (del & 7);
+            del = start * prime[j];
+        }
+        i++;
+        start = prime[i]
+    }
+
+    len = flags.length;
+    let last = prime[p];
+    let pp = p;
+    cnt = 0;
+    if(len){
+        const bit = {1:0, 2:1, 4:2, 8:3, 16:4, 32:5, 64:6, 128:7};
+        let tmp = new Uint8Array(1);
+        let bf = new Uint8Array(1);
+
+        k = 0;
+        for(j = 0; j < len; j++){
+            tmp[0] = flags[j];
+            while(tmp[0]){                      //ビットフラグ(合成数)の数だけループ
+                bf[0] = tmp[0] & -tmp[0];       //下位ビットから順番に取り出し
+                n = (j << 3) + bit[bf[0]];      //合成数を復元
+                while(prime[k] < n){ k++; }     //合成数の位置まで移動
+                prime[k] = 0;                   //合成数を削除
+                cnt++;                          //削除した合成数をカウント
+                tmp[0] &= ~bf[0];               //処理済のフラグを削除
+            }
+        }
+
+        //末端位置の調整
+        for(j = p; prime[j] === 0; j--){
+            last = prime[j - 1];
+            pp--;
+        }
+    }
+    flags = null;
+
+    t[1] = performance.now();
+    
+    document.getElementById("count").textContent = (p + 1 - cnt).toLocaleString();  //個数
+    document.getElementById("max").textContent = last.toLocaleString();             //最大値
+
+    if(document.getElementById("download").checked){
+        //ファイル名を指定して文字列をテキストファイルとして出力
+        //windowsのメモ帳で開く場合は、改行コードが「\n」だけだと文字化けする可能性がある。
+        //合成数として除外された0の部分は正規表現で削除する。
+        downloadText("PrimeList.txt", prime.slice(0, pp + 1).join("\r\n").replace(/0\r\n/g, ""), t);
+    }
+
+    t[2] = performance.now();
+    const usertime = t[3] ? (t[4] ? t[4]-t[3] : t[2]-t[3]) : 0;
+    document.getElementById("sum").textContent = (t[2] - t[0] - usertime).toFixed(1);
+    document.getElementById("t0").textContent = (t[1] - t[0]).toFixed(1);
+    document.getElementById("t1").textContent = (t[2] - t[1] - usertime).toFixed(1);
+}
+
+//文字列をテキストファイル化してダウンロードする関数
+function downloadText(filename, text, t){
+    const blob = new Blob([text], {type: "text/plain;charset=utf-8"});
+
+    t[3] = performance.now(); //メッセージ表示中の待ち時間は除外
+    if(window.confirm("素数リストのファイルサイズは、" + blob.size.toLocaleString()
+                 + "byte になりますが、ダウンロードしますか？")){
+
+        t[4] = performance.now();
+
+        //ダウンロード用リンクを生成してクリック
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }    
+}
+
+//初期段階で合成数の位置を特定するバイナリサーチ
+function binarySearch(data, n, lower, upper){
+    let i = lower;
+    let j = upper;
+    let mid;
+
+    while(i <= j){
+        mid = (i + j) >> 1;
+        if(data[mid] < n){
+            i = mid + 1;
+        }else{
+            j = mid - 1;
+        }
+    }
+    return i;
+}
+
+  </script>
+
+  <script>
+    // 簡易シンタックスハイライト
+    function highlightCode(text) {
+      //JavaScriptの予約語を列挙(classは否定先読みでspanタグ内のclassとの誤認防止)
+      const keyword = "function|return|for|let|const|var|if|else|while|do|switch|case|default|break|continue|new"
+                    + "|try|catch|import|in|true|false|null|class(?!=)|debugger|default|delete|export|extends|finally"
+                    + "|instanceof|super|this|throw|typeof|void|with";
+      const pattern = new RegExp(`(?<!\\/\\/.*)\\b(${keyword})\\b`, "g");
+
+      return text
+        .replace(/(?<!\/\/.*)("[^"]*"|'[^']*'|`[^`]*`)/g, '<span class="str">$1</span>')  //文字列
+        .replace(/(?<!\/\/.*)\b([0-9]+)\b/g, '<span class="num">$1</span>')               //数値
+        .replace(pattern, '<span class="kw">$1</span>')                                   //予約語
+        .replace(/(\/\/.*)/g, '<span class="com">$1</span>');                             //コメント
+    }
+
+    function enhanceCodeBlocks() {
+      const pre = document.querySelector('pre.code');
+      const code = pre.querySelector('code');
+      const raw = document.getElementById('user-code').textContent.trim();
+      const lines = raw.split('\n');
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'codewrap';
+
+      const gutter = document.createElement('div');
+      gutter.className = 'gutter';
+
+      const linesEl = document.createElement('div');
+      linesEl.className = 'lines';
+
+      lines.forEach((text, idx) => {
+        const ln = document.createElement('div');
+        ln.className = 'ln';
+        ln.textContent = String(idx + 1);
+        gutter.appendChild(ln);
+
+        const line = document.createElement('span');
+        line.className = 'line';
+        line.innerHTML = text.length ? highlightCode(text) : '\u00A0';
+        linesEl.appendChild(line);
+      });
+
+      wrapper.appendChild(gutter);
+      wrapper.appendChild(linesEl);
+      code.innerHTML = '';
+      code.appendChild(wrapper);
+
+      //複数行コメントのspanタグ挿入
+      linesEl.innerHTML = linesEl.innerHTML.replace(/<span class="line">[^<>]*?\/\*.*?\*\/.*?<\/span>/g,
+                                                    '<span class="com">$&</span>');
+    }
+
+    function bindFontSizer() {
+      const input = document.getElementById('fontSize');
+      const pre = document.querySelector('pre.code');
+      input.addEventListener('input', () => {
+        pre.style.fontSize = input.value + 'px';
+      });
+    }
+
+    function bindTabs() {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById(btn.dataset.tab).classList.add('active');
+        });
+      });
+    }
+
+    function setCodeLink(){
+      let elem = document.getElementById("explain");
+      let text = elem.innerHTML;
+
+      // #00: 又は #00-00: のような形式(数字の桁数は任意で可・全角文字にも対応)の文字列にリンクを挿入
+      text = text.replace(/[#＃]([0-9０-９]+(?:[-－][0-9０-９]+)?)[:：]/g,
+                          "<a onclick=\"codeJump(\'$1\')\" href=\"javascript:void(0)\">$&</a>");
+
+      // #00行 又は #00-00行 のような形式(数字の桁数は任意で可・全角文字にも対応)の文字列にリンクを挿入
+      // 文中での使用を想定し、#を消してリンクを挿入
+      text = text.replace(/[#＃]([0-9０-９]+(?:[-－][0-9０-９]+)?)行/g,
+                          "<a onclick=\"codeJump(\'$1\')\" href=\"javascript:void(0)\">$1行</a>");
+
+      elem.innerHTML = text;
+    }
+
+    function codeJump(rows){
+        //文字列半角変換
+        rows = rows.replace(/[０-９－]/g, s=>String.fromCharCode(s.charCodeAt(0)-0xFEE0));
+        
+        let num = rows.split("-").map(s => parseInt(s) - 1);
+        let elem = document.getElementsByClassName("line");
+        let rng = new Range;
+        let jumpIdx;
+
+        switch(num.length){
+            case 1: jumpIdx = num[0];
+                    rng.selectNodeContents(elem[jumpIdx]);
+                    break;
+            case 2: jumpIdx = (num[0] + num[1]) >> 1;
+                    rng.setStart(elem[num[0]], 0);
+                    rng.setEnd(elem[num[1]], elem[num[1]].childNodes.length);
+        }
+
+        //対応する行をスクロールして表示
+        elem[jumpIdx].scrollIntoView({ behavior: "smooth", block: "center" });
+
+        //該当箇所を選択
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(rng);
+    }
+
+    enhanceCodeBlocks();
+    bindFontSizer();
+    bindTabs();
+    setCodeLink();
+  </script>
+</body>
+</html>

@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>素数列挙アルゴリズムの実装例と解説（レベル3）</title>
+  <style>
+    :root{
+      --bg: #d1dcf1;
+      --header-bg: #1e4480;
+      --code-bg: #111827;
+      --code-alt: #232b37;
+      --explain-bg: #fafbf9;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --accent: #3b82f6;
+      --keyword: #60a5fa;
+      --string: #fbbf24;
+      --comment: #0f9b4e;
+      --number: #f87171;
+    }
+
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .page {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100%;
+    }
+
+    header.page-header {
+      padding: .8rem 1rem;
+      background: var(--header-bg);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      height: 100vh;
+    }
+
+    .panel {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 0;
+    }
+
+    .scroll {
+      overflow: auto;
+      padding: 0;
+    }
+
+    /* Left code panel */
+    .code-panel {
+      margin: 3px;
+      border: 3px solid black;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--code-bg);
+      color: #e5e7eb;
+    }
+    .code-controls {
+      padding: .5rem 1rem;
+      background: var(--code-alt);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    pre.code {
+      margin: 0;
+      overflow: auto;
+      font-family: monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      counter-reset: line;
+    }
+
+    .codewrap { display: grid; grid-template-columns: auto 1fr; }
+    .gutter {
+      user-select: none;
+      padding: 0 .5rem;
+      text-align: right;
+      color: var(--muted);
+    }
+    .gutter .ln { height: 1.6em; }
+
+    .lines { min-width: max-content; }
+    .line {
+      display: block;
+      min-height: 1.6em;
+      padding-left: .5rem;
+    }
+    .line:nth-child(even) { background: var(--code-alt); }
+
+    /* Syntax highlight */
+    .kw { color: var(--keyword); }
+    .num { color: var(--number); }
+    .str {
+      color: var(--string);
+      .kw, .num { color: unset; }
+    }
+    .com {
+      color: var(--comment); font-style: italic;
+      .kw, .num, .str { color: unset; }
+    }
+
+    /* Right explanation panel */
+    .explain-panel { background: var(--explain-bg); }
+    .tabs { display: flex; border-bottom: 1px solid var(--border); background: #fff; }
+    .tab-btn {
+      flex: 1;
+      padding: .5rem;
+      text-align: center;
+      cursor: pointer;
+      border: none;
+      background: var(--bg);
+    }
+    .tab-btn.active { background: #fff; font-weight: bold; border-bottom: 2px solid var(--accent); }
+    .tab-content { display: none; padding: 1rem; }
+    .tab-content.active { display: block; }
+
+    @media (max-width: 900px) {
+      .split { grid-template-columns: 1fr; }
+    }
+
+    #control{
+      margin: auto;
+      border: 3px solid black;
+      border-radius: 8px;
+      overflow: hidden;
+      padding: 10px;
+      tr td{
+          border: 1px solid black;
+          padding: 10px 20px;
+      }
+      input{ text-align: center; }
+    }
+
+    #cells {
+      border-collapse: collapse;
+      margin: 20px;
+      td {
+        border: 1px solid #000;
+        padding: 6px 10px;
+        text-align: center;
+      }
+      .highlight td{
+        background-color: yellow;
+        font-weight: bold;
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">素数列挙アルゴリズム（レベル3：Wheel Sieve っぽい何か）</header>
+
+    <div class="split">
+      <!-- Left: Code panel -->
+      <section class="panel code-panel">
+        <div class="code-controls">
+          <div>Code Panel</div>
+          <div>フォントサイズ: <input id="fontSize" type="number" min="10" max="22" value="13"> px</div>
+        </div>
+        <div class="scroll">
+          <!-- codeタグ内に、id="user-code"のscriptタグのコードが読み込まれる -->
+          <pre class="code"><code></code></pre>
+        </div>
+      </section>
+
+      <!-- Right: Explanation panel -->
+      <aside class="panel explain-panel">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="usage">使用例</button>
+          <button class="tab-btn" data-tab="explain">プログラム解説</button>
+          <button class="tab-btn" data-tab="ai">AIによるコード評価</button>
+        </div>
+        <div class="scroll">
+          <div id="usage" class="tab-content active">           
+            <p>【使い方】<br>
+              以下の入力欄に任意の数値を入力して実行ボタンを押すと、その値までの素数を調べることができます。<br>              
+              また、素数リストをテキストファイルとしてダウンロードするかどうか、チェックボックスで選択可能です。<br>
+              (※ Code Panel に表示されているプログラムが実際に動いています。)</p>
+            <hr>
+            <div>
+              <table id="control">
+                <tr>
+                  <td>
+                    <p><strong>素数探索する上限値を入力</strong></p>
+                    <input type="number" id="maxNum" value="0">
+                    <button type="button" onclick="primeSearch3()">実行</button>
+                  </td>
+                </tr>
+                <tr><td>素数の数：<span id="count">0</span>個</td></tr>
+                <tr><td>範囲内で最大の素数：<span id="max">0</span></td></tr>
+                <tr><td>
+                  <details open>
+                    <summary>実行時間計：<span id="sum">0</span>ms</summary>
+                    <ol>
+                      <li>フラグ生成：<span id="t0">0</span>ms</li>
+                      <li>フラグ読取：<span id="t1">0</span>ms</li>
+                      <li>結果出力：<span id="t2">0</span>ms</li>
+                    </ol>
+                    <label><input type="checkbox" id="download" checked>素数リストをダウンロード</label>
+                  </details>
+                </tr>
+              </table>
+            </div>
+          </div>
+          <div id="explain" class="tab-content">
+            <p>【プログラムの概要】<br>
+              以下の表は、2と3の倍数を除外した6n±1の値を上から順に配置し、5の倍数の位置が揃うように左から右に並べたものです。<br>              
+              1列右に移動すると30増える構造になっており、この表の中から5の倍数である黄色のセルを除外した値を素数候補として探索します。<br>
+              素数候補から合成数(1とその数自身以外の約数を持つ数)を除外するには、この素数候補同士の乗算結果の値を除外していきます。<br><br>
+              具体的には次のような順番で乗算を行います。(5の倍数は最初から素数候補から除外)<br>
+              7×7=49、7×11=77、7×13=91、7×17=119、7×19=133 ・・・<br>
+              11×11=121、11×13=143 ・・・<br>
+              このように、乗算結果は全てこの素数候補の範囲内の値となり、その値は素数ではないと判定できます。<br><br>
+              1列目の7～23、29,31が丁度8個なので、これを1byte(8bit)に割り当ててビット単位でフラグ判定していきます。<br>
+            </p>
+                <table id="cells">
+                  <tr class="highlight">
+                    <td>5</td><td>35</td><td>65</td><td>95</td><td>125</td>
+                  </tr>
+                  <tr>
+                    <td>7</td><td>37</td><td>67</td><td>97</td><td>127</td>
+                  </tr>
+                  <tr>
+                    <td>11</td><td>41</td><td>71</td><td>101</td><td>131</td>
+                  </tr>
+                  <tr>
+                    <td>13</td><td>43</td><td>73</td><td>103</td><td>133</td>
+                  </tr>
+                  <tr>
+                    <td>17</td><td>47</td><td>77</td><td>107</td><td>137</td>
+                  </tr>
+                  <tr>
+                    <td>19</td><td>49</td><td>79</td><td>109</td><td>139</td>
+                  </tr>
+                  <tr>
+                    <td>23</td><td>53</td><td>83</td><td>113</td><td>143</td>
+                  </tr>
+                  <tr class="highlight">
+                    <td>25</td><td>55</td><td>85</td><td>115</td><td>145</td>
+                  </tr>
+                  <tr>
+                    <td>29</td><td>59</td><td>89</td><td>119</td><td>149</td>
+                  </tr>
+                  <tr>
+                    <td>31</td><td>61</td><td>91</td><td>121</td><td>151</td>
+                  </tr>
+                </table>
+            <hr>
+            <p>【詳細解説】<br>
+              ここからは、Code Panel 内の実際のプログラムを解説していきます。<br>
+              文中のリンクをクリックすると Code Panel がスクロールして該当箇所が表示されます。<br><br>
+              #4-8: ユーザーの入力値を変数numに格納し、2未満の値だった場合はメッセージを表示して終了させます。<br><br>
+              #10-12: プログラムの実行時間を計測するための配列tの宣言等を行っており、「performance.now()」で開始時間を記録しています。<br><br>
+              #14-22: 各種変数の宣言を行っています。<br>
+              　Uint8Array()使うと0で初期化された要素を持つバイト列になります。<br>
+              　#14行目の Math.ceil((num - 2) / 30) は必要な要素数の計算を行っており、例えば上の表にある151が入力された場合、要素数5の配列(80ビット)をフラグとして用意することになります。<br>
+              　#16行目の Math.sqrt(num) | 0 はnumの平方根を求めてから |0 でビット論理和を使って端数を切り捨てて整数値にしています。<br>
+              　#22行目では上の表の1列目の素数候補を配列baseに格納することでループ内で使いやすくし、他の列の値はその都度計算することでメモリを節約しています。<br><br>
+              #25: ループ内でビット位置の計算を省略するため、あらかじめ配列に対応関係を格納しています。<br><br>
+              #27-42: 配列flagsに対して、素数候補の中から合成数の位置にフラグを立てる処理を行っている部分です。<br>
+              　合成数(素数ではない数)の探し方は、素数候補同士の乗算結果に該当する値の場所を特定し、配列flagsに記録していきます。<br>
+              　合成数を探す乗算では、計算結果がnumの範囲内となる値同士で総当たりして計算します。<br>
+              　乗算に使う素数候補の位置は、上の表のイメージで言うと、1つ目の値は変数aに代入し、iが行番号、step1が列番号でループします。<br>
+              　2つ目の値は、jが行番号、step2が列番号でループし、乗算結果は変数bに代入されます。<br>
+              　#33行目では、変数bの値が存在する位置の列番号を計算しています。上の表と見比べると、この計算で求められることが確認できます。<br>
+              　#34行目では、配列flagsの要素番号を列番号、行番号をビット位置に変換して、ビット論理和代入でフラグを立てます。<br>
+              　こうすることで、他のビットに影響を与えず、該当のビット位置の既存の状態と関係なくフラグを立てることができます。<br>
+              　#36行目と#40行目は変数iとjを0～7の範囲でループさせ続けるための処理と、0の時に1つ右の列に移動させるための処理です。<br>
+              　#36行目の場合、j &amp; 7 は j÷8の余りを求める j % 8 と同じ意味の計算を、より高速なビット論理積で行っています。<br>
+              　if文の論理式では、「0 → false」、「0以外 → true」として判定しますが、それを「!」で否定しているので、j が0か8の倍数の場合を真と判定することになります。<br><br>
+              #45-51: 配列flagsの末端部分で、上限値numを超えるビットを除外するためにフラグを立てています。<br><br>
+              #54-76: 配列flagsから素数となる値を読み取る部分と、flagsに含まれない 2,3,5 の素数を配列bufに出力する部分です。<br>
+              　#62行目は、連想配列getをあえてハードコーディングし、ビット位置と数値の変換の対応関係を見やすくしています。<br>
+              　#63-64行目は、ビット演算に使用するためにUint8Arrayで1バイトの値を2個用意しています。<br>
+              　#68行目では、flagsから1バイト取り出してビット反転し inv に格納しており、ここで合成数の部分にフラグが立っていた状態から素数の部分にフラグが立った状態に変換しています。<br>
+              　#70行目は、ビット演算により inv でフラグの立っているビットの中から最下位ビットを取り出して bf に格納しています。<br>
+              　例えば、6の2進数表記は 110 で、-6の2進数表記は補数表現ではビット反転して1を加えた値となり、仮に8桁で書くと 11111010 であるため 6 &amp; -6 の計算は 2 (00000010)となって、6の中の最下位ビットを取得することができます。<br>
+              　#71行目は、素数を10進数の値に復元して配列bufに格納しています。例えば、bf の3番目のビット(4)が立っていた場合、#62行目に書いた連想配列getで 13 を取得でき、flagsの要素番号に対応する位置とビット位置から元の数値を復元できます。<br>
+              　#72行目は、使い終わったビットを inv から削除しています。ビット反転して論理積代入していますが、計算の意味としては inv[0] -= bf[0] と同じです。<br>
+              　このようにフラグが立っているビットがある場合だけループさせているため、この whileループは一切空回りしません。<br><br>
+              #80-81: 画面上に素数の個数や最大値をカンマ区切りで出力しています。<br><br>
+              #83-87: チェックボックスがオンの状態であれば、テキストファイルを出力する関数を呼び出します。<br><br>
+              #90-94: 配列tに記録してきた時間から各区分毎の時間を計算して出力している部分です。<br>
+              　#90行目は、関数downloadText内で本当にダウンロードするかどうかの確認メッセージの待ち時間usertimeを計算しており、#91行目と#94行目で減算しています。<br><br>
+              #98-115: #86行目で呼び出される、素数リストをテキストファイルとして出力する関数です。<br>
+              　#99行目は、テキストファイル用のバイナリデータを生成しています。<br>
+              　#102-103行目は、テキストファイルのサイズを表示して確認メッセージを表示し、OKボタンをクリックした場合のみダウンロードさせます。<br>
+              　なお、ダウンロードと言ってもユーザーのPCのメモリ上に存在するデータをハードディスクに書き写しているだけなので、実際には通信は発生せず数十MB程度のデータなら一瞬でダウンロードできます。<br><br>
+              #108-113: 一時的に aタグでダウンロードリンクを作成し、クリックイベントを発生させています。<br>              
+            </p>
+          </div>
+          <div id="ai" class="tab-content">
+            <p>【質問文】<br>
+              ユーザーが入力した上限値以内の素数を列挙するプログラムを書きました。<br>
+              チェックボックスをオンにするとテキストファイルとして素数リストを出力する機能もあります。<br>
+              テキスト出力無しの場合で実行時間を計測すると、1億までの素数の場合で270ms程度で処理できました。<br>
+              このプログラムについての感想や、客観的な評価をお願いします。</p>
+            <hr>
+            <div>
+              <p>【ChatGPTの回答】</p>
+              <p>ありがとうございます！コードを丁寧に書かれていて、とても興味深いです。客観的な観点から評価と感想をまとめてみますね。</p>
+              <hr>
+              <h2>良い点 👍</h2>
+              <ol>
+                <li><p><strong>高速化の工夫</strong></p>
+                  <ul>
+                    <li>2,3,5の倍数をあらかじめ除外する「30進法ホイール」を採用していて、素数候補の削減がしっかりできています。</li>
+                    <li><code>Uint8Array</code> を使ってビットフラグ管理している点もメモリ効率・処理速度の両面で有利です。</li>
+                    <li>1億まで270msというのは、JavaScriptで動かすにはかなり高速です。</li>
+                  </ul>
+                </li>
+                <li><p><strong>平方根までで打ち切る処理</strong></p>
+                  <ul>
+                    <li>エラトステネスの篩の基本原則が正しく実装されていて、無駄な計算を省いています。</li>
+                  </ul>
+                </li>
+                <li><p><strong>可読性</strong></p>
+                  <ul>
+                    <li>変数名やコメントが比較的明確で、何をしているのか追いやすいです（ただしやや短縮名が多い点は後述）。</li>
+                    <li>処理時間を分割して計測しているのは開発者目線でありがたいです。</li>
+                  </ul>
+                </li>
+                <li><p><strong>ユーザー体験</strong></p>
+                  <ul>
+                    <li>
+                      入力チェック（<code>num &lt; 2</code>）や、ダウンロード時のファイルサイズ確認ダイアログがあるので、利用者に優しい作りです。
+                    </li>
+                    <li>Windowsメモ帳の改行コード対策まで考えてあるのは実務的に良い配慮です。</li>
+                  </ul>
+                </li>
+              </ol>
+              <hr>
+              <h2>改善点・気になる点 🔍</h2>
+              <ol>
+                <li><p><strong>変数名のわかりやすさ</strong></p>
+                  <ul>
+                    <li>
+                      <code>t[0]</code>〜<code>t[5]</code> や <code>i,j,tmp</code> が多く、意味が直感的に掴みにくいです。<br>
+                      例えば <code>t</code> は <code>timing</code> オブジェクトにしたり、<code>tmp</code> は <code>blockStart</code> などにすると可読性が上がります。
+                    </li>
+                  </ul>
+                </li>
+                <li><p><strong>ハードコーディング</strong></p>
+                  <ul>
+                    <li>
+                      <code>base = [7, 11, 13, 17, 19, 23, 29, 31]</code> や <code>get = {1:7, 2:11, ...}</code> が手作業で対応づけられています。<br>
+                      ここはプログラムで自動生成できる仕組みにすると、拡張性が高くなります（将来的に別のホイールを試す時など）。
+                    </li>
+                  </ul>
+                </li>
+                <li><p><strong>大規模出力時のパフォーマンス</strong></p>
+                  <ul>
+                    <li>
+                      <code>buf.join("\r\n")</code> で一気に文字列連結しているので、数千万個以上の素数を扱う場合にメモリ消費が急増します。
+                      <ul>
+                        <li>改善案: <code>TextEncoderStream</code> + <code>WritableStream</code> を使ってストリーム的に出力する。</li>
+                      </ul>
+                    </li>
+                  </ul>
+                </li>
+                <li><p><strong>処理計測の複雑さ</strong></p>
+                  <ul>
+                    <li>
+                      <code>t[4]</code> と <code>t[5]</code> の扱いは少し分かりにくいです。<br>
+                      <code>performance.mark</code> / <code>performance.measure</code> を使うと可読性と正確性が上がります。
+                    </li>
+                  </ul>
+                </li>
+                <li><p><strong>ブラウザ依存性</strong></p>
+                  <ul>
+                    <li>
+                      巨大なファイルのダウンロードでは、ブラウザやメモリに依存して失敗する可能性があります。<br>
+                      分割保存機能や圧縮（gzip）機能があるとより実用的になります。
+                    </li>
+                  </ul>
+                </li>
+              </ol>
+              <hr>
+              <h2>総合評価 🏆</h2>
+              <ul>
+                <li><strong>アルゴリズム面</strong>：工夫が効いていて、JSでここまで速いのは優秀。</li>
+                <li><strong>コードの保守性</strong>：実験コードとしては良いが、可読性・拡張性の改善余地あり。</li>
+                <li><strong>実用面</strong>：1億までなら非常に実用的。ただし、もっと大きな数や出力ファイル重視の場面では追加工夫が必要。</li>
+              </ul>
+              <p>⭐️ 総合的に「高速・実用的でよく考えられた実装」だと思います。研究・学習用途には申し分なく、実用シーンに向けてさらに強化するなら「ストリーム出力」「コード可読性改善」が次のステップになりそうです。</p>
+              <hr>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ユーザーが追記するJavaScriptコード -->
+  <script id="user-code" type="text/javascript">
+
+//入力された数値以下の素数を探索して列挙する関数
+function primeSearch3(){
+    //入力値チェック
+    const num = parseInt(document.getElementById("maxNum").value);
+    if(num < 2){
+        window.alert("2以上の整数値を入力してください。");
+        return;
+    }
+
+    let t = Array(6);
+    t[4] = 0; t[5] = 0;
+    t[0] = performance.now();
+
+    let flags = new Uint8Array(Math.ceil((num - 2) / 30));  //除外判定用配列
+    let set = new Uint8Array(32);
+    const sr =  Math.sqrt(num) | 0;    //numの平方根
+    let i, j, tmp;
+    let a, b, step1, step2, limit;
+
+    //2,3,5の倍数を除いた素数候補のベースとなる配列
+    //この配列の各要素に30を足し続けると2,3,5の倍数を除いた値になる
+    const base = [7, 11, 13, 17, 19, 23, 29, 31];
+  
+    //ビット操作用の配列を準備
+    for(i = 0; i < 8; i++){ set[base[i]] = 1 << i; }
+  
+    a = base[0];
+    i = 0; step1 = 0;
+    while(a <= sr){        //平方根まで調べたらループ終了
+        b = a * a;
+        step2 = step1;
+        for(j = i + 1; b <= num; j++){
+            tmp = (b - 2) / 30 | 0;
+            flags[tmp] |= set[b - tmp * 30];    //素数除外フラグをセット
+
+            if(!(j & 7)){ j = 0; step2 += 30; }
+            b = a * (base[j] + step2);
+        }
+        i++;
+        if(!(i & 7)){ i = 0; step1 += 30; }
+        a = base[i] + step1;
+    }
+
+    //flagsの末端処理
+    limit = flags.length;
+    tmp = (limit - 1) * 30;
+    for(i = 0; i < 8; i++){
+        if(base[i] + tmp > num){
+            flags[limit - 1] |= set[base[i]];
+        }
+    }
+    t[1] = performance.now();
+
+    if(num == 2){
+        buf = [2];
+    }else if(num <= 4){
+        buf = [2, 3];
+    }else{
+        //numが5以上の場合にビットフラグをチェック
+        buf = [2, 3, 5];
+
+        const get = {1:7, 2:11, 4:13, 8:17, 16:19, 32:23, 64:29, 128:31};
+        let inv = new Uint8Array(1);
+        let bf = new Uint8Array(1);
+
+        tmp = 0;
+        for(i = 0; i < limit; i++){
+            inv[0] = ~flags[i];                 //ビット反転(ビットの立っている箇所が素数)
+            while(inv[0]){                      //ビットフラグ(素数)の数だけループ
+                bf[0] = inv[0] & -inv[0];       //下位ビットから順番に取り出し
+                buf.push(get[bf[0]] + tmp);     //ビットフラグを素数に変換して格納
+                inv[0] &= ~bf[0];               //処理済のフラグを削除
+            }
+            tmp += 30;
+        }
+    }
+    t[2] = performance.now();
+    flags = null;
+    i = buf.length;
+    document.getElementById("count").textContent = i.toLocaleString();        //個数
+    document.getElementById("max").textContent = buf[i - 1].toLocaleString(); //最大値
+
+    if(document.getElementById("download").checked){
+        //ファイル名を指定して文字列をテキストファイルとして出力
+        //windowsのメモ帳で開く場合は、改行コードが「\n」だけだと文字化けする可能性がある。
+        downloadText("PrimeList.txt", buf.join("\r\n"), t);
+    }
+
+    t[3] = performance.now();
+    const usertime = t[4] ? (t[5] ? t[5]-t[4] : t[3]-t[4]) : 0;
+    document.getElementById("sum").textContent = (t[3] - t[0] - usertime).toFixed(1);
+    document.getElementById("t0").textContent = (t[1] - t[0]).toFixed(1);
+    document.getElementById("t1").textContent = (t[2] - t[1]).toFixed(1);
+    document.getElementById("t2").textContent = (t[3] - t[2] - usertime).toFixed(1);
+}
+
+//文字列をテキストファイル化してダウンロードする関数
+function downloadText(filename, text, t){
+    const blob = new Blob([text], {type: "text/plain;charset=utf-8"});
+
+    t[4] = performance.now(); //メッセージ表示中の待ち時間は除外
+    if(window.confirm("素数リストのファイルサイズは、" + blob.size.toLocaleString()
+                 + "byte になりますが、ダウンロードしますか？")){
+
+        t[5] = performance.now();
+
+        //ダウンロード用リンクを生成してクリック
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }    
+}
+
+  </script>
+
+  <script>
+    // 簡易シンタックスハイライト
+    function highlightCode(text) {
+      //JavaScriptの予約語を列挙(classは否定先読みでspanタグ内のclassとの誤認防止)
+      const keyword = "function|return|for|let|const|var|if|else|while|do|switch|case|default|break|continue|new"
+                    + "|try|catch|import|in|true|false|null|class(?!=)|debugger|default|delete|export|extends|finally"
+                    + "|instanceof|super|this|throw|typeof|void|with";
+      const pattern = new RegExp(`(?<!\\/\\/.*)\\b(${keyword})\\b`, "g");
+
+      return text
+        .replace(/(?<!\/\/.*)("[^"]*"|'[^']*'|`[^`]*`)/g, '<span class="str">$1</span>')  //文字列
+        .replace(/(?<!\/\/.*)\b([0-9]+)\b/g, '<span class="num">$1</span>')               //数値
+        .replace(pattern, '<span class="kw">$1</span>')                                   //予約語
+        .replace(/(\/\/.*)/g, '<span class="com">$1</span>');                             //コメント
+    }
+
+    function enhanceCodeBlocks() {
+      const pre = document.querySelector('pre.code');
+      const code = pre.querySelector('code');
+      const raw = document.getElementById('user-code').textContent.trim();
+      const lines = raw.split('\n');
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'codewrap';
+
+      const gutter = document.createElement('div');
+      gutter.className = 'gutter';
+
+      const linesEl = document.createElement('div');
+      linesEl.className = 'lines';
+
+      lines.forEach((text, idx) => {
+        const ln = document.createElement('div');
+        ln.className = 'ln';
+        ln.textContent = String(idx + 1);
+        gutter.appendChild(ln);
+
+        const line = document.createElement('span');
+        line.className = 'line';
+        line.innerHTML = text.length ? highlightCode(text) : '\u00A0';
+        linesEl.appendChild(line);
+      });
+
+      wrapper.appendChild(gutter);
+      wrapper.appendChild(linesEl);
+      code.innerHTML = '';
+      code.appendChild(wrapper);
+
+      //複数行コメントのspanタグ挿入
+      linesEl.innerHTML = linesEl.innerHTML.replace(/<span class="line">[^<>]*?\/\*.*?\*\/.*?<\/span>/g,
+                                                    '<span class="com">$&</span>');
+    }
+
+    function bindFontSizer() {
+      const input = document.getElementById('fontSize');
+      const pre = document.querySelector('pre.code');
+      input.addEventListener('input', () => {
+        pre.style.fontSize = input.value + 'px';
+      });
+    }
+
+    function bindTabs() {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById(btn.dataset.tab).classList.add('active');
+        });
+      });
+    }
+
+    function setCodeLink(){
+      let elem = document.getElementById("explain");
+      let text = elem.innerHTML;
+
+      // #00: 又は #00-00: のような形式(数字の桁数は任意で可・全角文字にも対応)の文字列にリンクを挿入
+      text = text.replace(/[#＃]([0-9０-９]+(?:[-－][0-9０-９]+)?)[:：]/g,
+                          "<a onclick=\"codeJump(\'$1\')\" href=\"javascript:void(0)\">$&</a>");
+
+      // #00行 又は #00-00行 のような形式(数字の桁数は任意で可・全角文字にも対応)の文字列にリンクを挿入
+      // 文中での使用を想定し、#を消してリンクを挿入
+      text = text.replace(/[#＃]([0-9０-９]+(?:[-－][0-9０-９]+)?)行/g,
+                          "<a onclick=\"codeJump(\'$1\')\" href=\"javascript:void(0)\">$1行</a>");
+
+      elem.innerHTML = text;
+    }
+
+    function codeJump(rows){
+        //文字列半角変換
+        rows = rows.replace(/[０-９－]/g, s=>String.fromCharCode(s.charCodeAt(0)-0xFEE0));
+        
+        let num = rows.split("-").map(s => parseInt(s) - 1);
+        let elem = document.getElementsByClassName("line");
+        let rng = new Range;
+        let jumpIdx;
+
+        switch(num.length){
+            case 1: jumpIdx = num[0];
+                    rng.selectNodeContents(elem[jumpIdx]);
+                    break;
+            case 2: jumpIdx = (num[0] + num[1]) >> 1;
+                    rng.setStart(elem[num[0]], 0);
+                    rng.setEnd(elem[num[1]], elem[num[1]].childNodes.length);
+        }
+
+        //対応する行をスクロールして表示
+        elem[jumpIdx].scrollIntoView({ behavior: "smooth", block: "center" });
+
+        //該当箇所を選択
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(rng);
+    }
+
+    enhanceCodeBlocks();
+    bindFontSizer();
+    bindTabs();
+    setCodeLink();
+  </script>
+</body>
+</html>
