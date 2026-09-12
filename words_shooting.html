@@ -168,9 +168,20 @@ rock|rɒk,岩、ロック音楽`;
     const correctlist = document.getElementById("correct");
 
     let isGameOver = false;
-    let intervalId = setInterval(game1, 50);
 
-    function game1() {
+    let animationId; // intervalIdの代わり
+    let lastTime = performance.now(); // 前回フレームの時間を記録
+
+    // 初回のゲームループ呼び出し
+    animationId = requestAnimationFrame(gameLoop);
+
+    function gameLoop(timestamp) {
+      if (isGameOver) return; // 中断中は処理しない
+
+      // 前回のフレームからの経過時間(秒)を計算
+      const deltaTime = (timestamp - lastTime) / 1000;
+      lastTime = timestamp;
+
       let i = 0;
       let j = 0;
 
@@ -187,9 +198,9 @@ rock|rɒk,岩、ロック音楽`;
           //描画(単語)          
           ctx1.fillText(words[i].q, words[i].x - 25, words[i].y - 2);
 
-          //落下移動
+          // 落下移動（経過時間に合わせて移動させる：1秒間に40ピクセル）
           if(words[i].y < 600){
-            words[i].y += 2;
+            words[i].y += 40 * deltaTime; 
           }else{
             words[i].f = false;
           }
@@ -206,6 +217,7 @@ rock|rɒk,岩、ロック音楽`;
         if(bullets[i].f){
           ctx1.fillText(bullets[i].c, bullets[i].x, bullets[i].y);
 
+          // 当たり判定
           for(j = count - 1; j >= 0; j--){
             if(words[j].f){
               if(bullets[i].y <= words[j].y){
@@ -222,14 +234,17 @@ rock|rɒk,岩、ロック音楽`;
             }
           }
 
-          //弾丸移動
+          // 弾丸移動（経過時間に合わせて移動させる：1秒間に60ピクセル）
           if(bullets[i].y > -50){
-            bullets[i].y -= 3;
+            bullets[i].y -= 60 * deltaTime;
           }else{
             bullets[i].f = false;
           }
         }
       }
+
+      // 次のフレームを描画するタイミングで再度gameLoopを呼び出す
+      animationId = requestAnimationFrame(gameLoop);
     }
 
     //⑤プレーヤコントロール
@@ -255,15 +270,18 @@ rock|rɒk,岩、ロック音楽`;
       }
     });
 
-    //ゲーム中断
+    // //ゲーム中断
     function stop(){
-      clearInterval(intervalId);
+      cancelAnimationFrame(animationId); // アニメーションをキャンセル
       isGameOver = true;
     }
+
     //ゲーム再開
     function start(){
+      if (!isGameOver) return; // すでに動いている場合は何もしない
       isGameOver = false;
-      intervalId = setInterval(game1, 50);
+      lastTime = performance.now(); // 再開した時点の時間をセットして時間のズレを防ぐ
+      animationId = requestAnimationFrame(gameLoop);
     }
 
     //英単語リストを表示して正解を検索できる
