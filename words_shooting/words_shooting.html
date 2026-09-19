@@ -168,6 +168,7 @@ rock|rɒk,岩、ロック音楽`;
 
     class wordblock {
       constructor(text, x, y){
+        let mt;
         this.text = text;
         if(text.length > 1){
           //文字列内の「|」より前の部分を1文字ずつ分割
@@ -178,9 +179,9 @@ rock|rɒk,岩、ロック音楽`;
           this.ans = char[i];
           char[i] = "□";
           this.quiz = char.join("");
-          const mt = ctx.measureText(this.quiz);
+          mt = ctx.measureText(this.quiz);
         }else{
-          const mt = ctx.measureText(text);
+          mt = ctx.measureText(text);
         }
         
         //位置情報の初期設定
