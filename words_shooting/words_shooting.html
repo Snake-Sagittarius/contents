@@ -19,6 +19,8 @@
     }
     #canvas1 {
       border: 2px solid gray;
+      background-image: url('starryNight.jpg');
+      background-size: cover;
     }
     button {
       display: inline-block;
@@ -30,12 +32,12 @@
   <h1>英単語穴埋めシューティング</h1>
     <table>
       <tr>
-        <td><canvas id="canvas1" width="400" height="600"></canvas></td>
+        <td><canvas id="canvas1" width="800" height="600"></canvas></td>
         <td>
-          <h3>ヒント</h3>
-          <textarea id="hint"></textarea>
           <h3>正解リスト</h3>
           <textarea id="correct"></textarea>
+          <h3>失敗リスト</h3>
+          <textarea id="miss"></textarea>
         </td>
       </tr>
       <tr>
@@ -153,134 +155,181 @@ rise|raɪz,昇る、上がる
 road|rəʊd,道路、道
 rock|rɒk,岩、ロック音楽`;
 
+    const correctList = document.getElementById("correct");
+    const missList = document.getElementById("miss");
     const canvas1 = document.getElementById("canvas1");
-    const ctx1 = canvas1.getContext("2d");
+    const ctx = canvas1.getContext("2d");
+    const canvasWidth = canvas1.width;
+    const canvasHeight = canvas1.height;
 
-    const player = { x: 200, y: 580 };
+    const player = { x: canvasWidth >> 1, y: canvasHeight - 50, width: 30, height: 30 };
     let words = [];
-    let hint = [];
     let bullets = [];
-    let count = 10;
 
-    getWords(words, hint, count);
-    const hintlist = document.getElementById("hint");
-    hintlist.value = hint.join("\n");
-    const correctlist = document.getElementById("correct");
+    class wordblock {
+      constructor(text, x, y){
+        this.text = text;
+        if(text.length > 1){
+          //文字列内の「|」より前の部分を1文字ずつ分割
+          let char = [...text.split("|")[0]];
 
+          //1文字「□」で隠した問題と解答を作成
+          let i = Math.floor(Math.random() * char.length);
+          this.ans = char[i];
+          char[i] = "□";
+          this.quiz = char.join("");
+          const mt = ctx.measureText(this.quiz);
+        }else{
+          const mt = ctx.measureText(text);
+        }
+        
+        //位置情報の初期設定
+        this.width = mt.width;
+        this.left = x - Math.floor(this.width / 2);
+        this.baseline = y;                      //ベースラインとなるy座標
+        this.fbba = mt.fontBoundingBoxAscent;   //ベースラインから上端までの長さ
+        this.fbbd = mt.fontBoundingBoxDescent;  //ベースラインから下端までの長さ
+      }
+    }
+
+    let count = 20; //出題数
+    let stock = getWords(count);  //出題待ちのストック
     let isGameOver = false;
+    let animationId;
+    let lastTime = performance.now(); //前回フレームの時間を記録
+    let spawnTimer = 0;      //ターゲットが次に出現するまでの時間（秒）
+    let spawnInterval = 2.0; //ターゲットが出現する間隔（2秒ごとに設定）
 
-    let animationId; // intervalIdの代わり
-    let lastTime = performance.now(); // 前回フレームの時間を記録
-
-    // 初回のゲームループ呼び出し
+    //初回のゲームループ呼び出し
     animationId = requestAnimationFrame(gameLoop);
 
     function gameLoop(timestamp) {
-      if (isGameOver) return; // 中断中は処理しない
+      if (isGameOver) return; //中断中は処理しない
 
-      // 前回のフレームからの経過時間(秒)を計算
+      //前回のフレームからの経過時間(秒)を計算
       const deltaTime = (timestamp - lastTime) / 1000;
       lastTime = timestamp;
 
-      let i = 0;
-      let j = 0;
-
       //画面をクリア
-      ctx1.clearRect(0, 0, 400, 600);
+      ctx.clearRect(0, 0, 400, 600);
       
-      ctx1.fillStyle = "black";
-      ctx1.font = "20px monospace";
-      for(i = 0; i < count; i++){
-        if(words[i].f){          
-          //描画(ターゲット)  
-          ctx1.fillRect(words[i].x - 25, words[i].y - 1, 50, 2);
-          
-          //描画(単語)          
-          ctx1.fillText(words[i].q, words[i].x - 25, words[i].y - 2);
+      //文字の色とサイズ設定
+      ctx.fillStyle = "white";
+      ctx.font = "30px monospace";
 
-          // 落下移動（経過時間に合わせて移動させる：1秒間に40ピクセル）
-          if(words[i].y < 600){
-            words[i].y += 40 * deltaTime; 
-          }else{
-            words[i].f = false;
-          }
+      //ターゲット出現処理
+      spawnTimer -= deltaTime;
+      if (spawnTimer <= 0 && stock.length > 0) {
+        //画面上部の表示範囲外でX座標がランダムな位置(左右の余白100px)に新規追加
+        words.push(new wordblock(stock.pop(), Math.floor(Math.random() * (canvasWidth - 200) + 100), -50));
+        spawnTimer = spawnInterval;   //出現タイマーをリセット
+
+        //単語の音声読み上げ処理を入れる
+      }
+
+      let i = 0;
+      //配列要素の削除でズレないように逆順でループ
+      for(i = words.length - 1; i >= 0; i--){
+        //文字列の上端が画面下に出たかチェック
+        if(words[i].baseline - words[i].fbba > canvasHeight){
+          //失敗リストに追加して削除
+          missList.value += (words[i].text + "\n");
+          words.splice(i, 1);
+        }else{
+          //落下移動（経過時間に合わせて移動させる：1秒間に40ピクセル）
+          words[i].baseline += 40 * deltaTime;          
         }
+        //文字列の描画
+        ctx.fillText(words[i].quiz, words[i].left, words[i].baseline);
       }
       
-      //描画(プレーヤ)
-      ctx1.fillStyle = "blue";
-      ctx1.fillRect(player.x - 15, player.y - 5, 30, 10);
+      //描画(プレイヤー)
+      ctx.fillStyle = "blue";
+      ctx.fillRect(player.x - (player.width >> 1), player.y - (player.height >> 1),
+                   player.width, player.height);
 
       //描画(弾丸)    
-      ctx1.fillStyle = "black";
-      for(i = 0; i < bullets.length; i++){
-        if(bullets[i].f){
-          ctx1.fillText(bullets[i].c, bullets[i].x, bullets[i].y);
+      ctx.fillStyle = "yellow";
+      for(i = bullets.length - 1; i >= 0; i--){
+        //弾丸移動（経過時間に合わせて移動させる：1秒間に60ピクセル）  
+        bullets[i].y -= 60 * deltaTime;
+        ctx.fillText(bullets[i].text, bullets[i].left, bullets[i].baseline);
 
-          // 当たり判定
-          for(j = count - 1; j >= 0; j--){
-            if(words[j].f){
-              if(bullets[i].y <= words[j].y){
-                if(bullets[i].x >= words[j].x - 25 && bullets[i].x <= words[j].x + 25){
-                  if(bullets[i].c == words[j].a){
-                    bullets[i].f = false;
-                    words[j].f = false;
-                    correctlist.value += (words[j].c + "\n");
-                  }
-                }
-              }else{
-                break;
-              }
-            }
-          }
+        //弾丸と単語の当たり判定
+        let buf = isHit(words, bullets[i].left, bullets[i].left + bullets[i].width,
+                        bullets[i].baseline - bullets[i].fbba, bullets[i].baseline + bullets[i].fbbd);
+        if(buf.flag){
+          //正解判定
+          if(bullets[i].text == words[buf.index].ans){
+            //正解時の効果音を入れる
 
-          // 弾丸移動（経過時間に合わせて移動させる：1秒間に60ピクセル）
-          if(bullets[i].y > -50){
-            bullets[i].y -= 60 * deltaTime;
+            //正解リストに追加して削除
+            correctList.value += (words[buf.index].text + "\n");            
+            words.splice(buf.index, 1);
           }else{
-            bullets[i].f = false;
+            //不正解時の効果音を入れる
+
           }
+          //接触した弾丸を消す
+          bullets.splice(i, 1);
         }
       }
 
-      // 次のフレームを描画するタイミングで再度gameLoopを呼び出す
+      //次のフレームを描画するタイミングで再度gameLoopを呼び出す
       animationId = requestAnimationFrame(gameLoop);
     }
+ 
+    //単語リストの当たり判定関数
+    function isHit(words, left, right, top, bottom){
+      let i;
+      let flag = false;
 
-    //⑤プレーヤコントロール
+      for(i = 0; i < words.length; i++){
+        if(words[i].baseline + words[i].fbbd > top &&
+           words[i].baseline - words[i].fbba < bottom &&
+           words[i].left < left &&
+           words[i].left + words[i].width > right){
+            flag = true;
+            break;            
+        }
+      }
+      return {flag: flag, index: i};
+    }
+
+    //プレイヤーをマウスで横移動
     canvas1.addEventListener("mousemove", function (e) {
       if (isGameOver) return;
       const rect = e.target.getBoundingClientRect();
       player.x = e.clientX - rect.left;
     });
 
-    //弾丸を追加
+    //キーボードでアルファベットの弾丸を発射
     window.addEventListener('keydown', function (e) {
       if (isGameOver) return;
 
       //テキストエリア（textarea）にフォーカスがある時は、ゲームのキー入力を無視する
-      if (document.activeElement.tagName === "TEXTAREA") {
-        return;
-      }
+      if (document.activeElement.tagName === "TEXTAREA") { return; }
       const key = e.key;  //押されたキーの文字を取得
 
-      // 1文字のアルファベット（半角の a-z または A-Z）のみを判定する正規表現
+      //1文字のアルファベット（半角の a-z または A-Z）のみを判定する正規表現
       if (/^[a-zA-Z]$/.test(key)) {
-        bullets.push({ x: player.x, y: player.y, c: key.toLowerCase(), f: true});
+        bullets.push(new wordblock(key.toLowerCase(), player.x, player.y - (player.height >> 1)));
+
+        //発射時の効果音を入れる
       }
     });
 
-    // //ゲーム中断
+    //ゲーム中断
     function stop(){
-      cancelAnimationFrame(animationId); // アニメーションをキャンセル
+      cancelAnimationFrame(animationId); //アニメーションをキャンセル
       isGameOver = true;
     }
 
     //ゲーム再開
     function start(){
-      if (!isGameOver) return; // すでに動いている場合は何もしない
+      if (!isGameOver) return; //すでに動いている場合は何もしない
       isGameOver = false;
-      lastTime = performance.now(); // 再開した時点の時間をセットして時間のズレを防ぐ
+      lastTime = performance.now(); //再開した時点の時間をセットして時間のズレを防ぐ
       animationId = requestAnimationFrame(gameLoop);
     }
 
@@ -296,35 +345,24 @@ rock|rɒk,岩、ロック音楽`;
     }
 
     //英単語リストからランダムでcountの数だけ抽出
-    function getWords(words, hint, count){
+    function getWords(count){
       const wordlist = document.getElementById("wordlist");
       const data = wordlist.value.split("\n");
       const len = data.length;
       let i = 0;
       let j = 0;
-      let k = 0;
+      // let k = 0;
       let tmp = "";
-      let buf = [];
+      // let buf = [];
 
+      //シャッフルした単語リストを作成
       for(i = len - 1; i >= len - count; i--){
         j = Math.floor(Math.random() * (i + 1));
         tmp = data[i];
         data[i] = data[j];
         data[j] = tmp;
       }
-      const list = data.slice(-count);
-
-      for(i = 0; i < count; i++){
-        buf = list[i].split("|");
-        hint.push(buf[1]);
-
-        j = Math.floor(Math.random() * 300 + 50);
-        let char = [...buf[0]];
-        k = Math.floor(Math.random() * char.length);
-        let ans = char[k];
-        char[k] = "□";
-        words.push({ x: j, y: -950 + 100 * i, c: buf[0], q: char.join(""), a: ans, f: true});
-      }
+      return data.slice(-count);
     }
   </script>
 </body>
