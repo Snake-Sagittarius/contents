@@ -225,7 +225,11 @@ rock|rɒk,岩、ロック音楽`;
         words.push(new wordblock(stock.pop(), Math.floor(Math.random() * (canvasWidth - 200) + 100), -50));
         spawnTimer = spawnInterval;   //出現タイマーをリセット
 
-        //単語の音声読み上げ処理を入れる
+        //単語の音声読み上げ
+        const utterance = new SpeechSynthesisUtterance();
+        utterance.text = words[words.length - 1].text.split("|")[0];
+        utterance.lang = 'en-US';
+        speechSynthesis.speak(utterance);
       }
 
       let i = 0;
