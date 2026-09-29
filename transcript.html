@@ -2,66 +2,156 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>リアルタイム文字起こし</title>
+  <title>リアルタイム文字起こし（保存機能付き）</title>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+    #output {
+      border: 1px solid #ccc;
+      padding: 10px;
+      height: 300px;
+      overflow-y: auto;
+      font-size: 16px;
+      line-height: 1.6;
+      margin-top: 10px;
+    }
+    .interim {
+      color: #888;
+    }
+    .controls {
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 8px 16px;
+      margin-right: 10px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
   <h2>スピーカー音声のリアルタイム文字起こし</h2>
-  <button id="btn">文字起こし開始</button>
+  
+  <div class="controls">
+    <button id="btn">文字起こし開始</button>
+    <button id="download-btn">テキストとして保存</button>
+  </div>
   <p id="status">停止中</p>
 
-  <!-- 認識結果を表示するエリア -->
-  <div id="output" style="border: 1px solid #ccc; padding: 10px; min-height: 150px; white-space: pre-wrap;"></div>
+  <div id="output">
+    <span id="final-span"></span><span id="interim-span" class="interim"></span>
+  </div>
 
   <script>
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
 
     recognition.lang = 'ja-JP';
-    recognition.continuous = true;     // 喋りが途切れても認識を継続する
-    recognition.interimResults = true; // 話している途中の結果もリアルタイム表示
+    recognition.continuous = true;
+    recognition.interimResults = true;
 
     const btn = document.getElementById('btn');
+    const downloadBtn = document.getElementById('download-btn');
     const status = document.getElementById('status');
-    const output = document.getElementById('output');
+    const finalSpan = document.getElementById('final-span');
+    const interimSpan = document.getElementById('interim-span');
+    const outputDiv = document.getElementById('output');
 
-    let isRecognizing = false;
+    let shouldRecognize = false;
 
+    // --- 文字起こし開始/停止ボタンの処理 ---
     btn.addEventListener('click', () => {
-      if (!isRecognizing) {
+      if (!shouldRecognize) {
+        shouldRecognize = true;
         recognition.start();
+        btn.textContent = "文字起こし停止";
+        status.textContent = "音声認識中...";
       } else {
+        shouldRecognize = false;
         recognition.stop();
+        btn.textContent = "文字起こし開始";
+        status.textContent = "停止中";
+        interimSpan.textContent = "";
       }
     });
 
-    recognition.onstart = () => {
-      isRecognizing = true;
-      btn.textContent = "文字起こし停止";
-      status.textContent = "音声認識中...";
-    };
+    // --- 【追加】テキスト保存ボタンの処理 ---
+    downloadBtn.addEventListener('click', () => {
+      // 画面に表示されている確定済みのテキストを取得
+      let htmlText = finalSpan.innerHTML;
+      
+      // HTMLの <br> タグを、テキストファイル用の改行コード(\n)に変換
+      let plainText = htmlText.replace(/<br\s*\/?>/gi, '\n');
+      
+      if (!plainText.trim()) {
+        alert('保存する文字起こしデータがありません。');
+        return;
+      }
 
+      // テキストデータをBlob（バイナリデータ）に変換
+      const blob = new Blob([plainText], { type: 'text/plain;charset=utf-8' });
+      
+      // ダウンロード用の一時的なURLを作成
+      const url = URL.createObjectURL(blob);
+      
+      // ファイル名に現在の日時を入れる（例: transcript_20260929_1615.txt）
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      const filename = `transcript_${yyyy}${mm}${dd}_${hh}${min}.txt`;
+
+      // 隠しリンク(<a>タグ)を作って強制的にクリックさせる
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      
+      // ダウンロード完了後に不要になったリンクとURLメモリを解放
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // --- APIの自動再接続とエラー処理 ---
     recognition.onend = () => {
-      isRecognizing = false;
-      btn.textContent = "文字起こし開始";
-      status.textContent = "停止中";
+      if (shouldRecognize) {
+        status.textContent = "再接続中...";
+        setTimeout(() => {
+          try {
+            recognition.start();
+            status.textContent = "音声認識中...";
+          } catch (e) {
+            console.error("再接続エラー:", e);
+          }
+        }, 500);
+      }
     };
 
-    recognition.onresult = (event) => {
-      let finalTranscript = '';
-      let interimTranscript = '';
+    recognition.onerror = (event) => {
+      console.warn("音声認識エラー:", event.error);
+      if (event.error === 'not-allowed' || event.error === 'audio-capture') {
+        shouldRecognize = false;
+        btn.textContent = "文字起こし開始";
+        status.textContent = "マイクの使用が許可されていません";
+      }
+    };
 
+    // --- 文字起こし結果の表示処理 ---
+    recognition.onresult = (event) => {
+      let interimTranscript = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += transcript + '\n';
+          finalSpan.innerHTML += transcript + '<br>';
         } else {
           interimTranscript += transcript;
         }
       }
-
-      if (finalTranscript) {
-        output.textContent += finalTranscript;
-      }
+      interimSpan.textContent = interimTranscript;
+      outputDiv.scrollTop = outputDiv.scrollHeight;
     };
   </script>
 </body>
