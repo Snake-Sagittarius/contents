@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>リアルタイム文字起こし</title>
+</head>
+<body>
+  <h2>スピーカー音声のリアルタイム文字起こし</h2>
+  <button id="btn">文字起こし開始</button>
+  <p id="status">停止中</p>
+
+  <!-- 認識結果を表示するエリア -->
+  <div id="output" style="border: 1px solid #ccc; padding: 10px; min-height: 150px; white-space: pre-wrap;"></div>
+
+  <script>
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = 'ja-JP';
+    recognition.continuous = true;     // 喋りが途切れても認識を継続する
+    recognition.interimResults = true; // 話している途中の結果もリアルタイム表示
+
+    const btn = document.getElementById('btn');
+    const status = document.getElementById('status');
+    const output = document.getElementById('output');
+
+    let isRecognizing = false;
+
+    btn.addEventListener('click', () => {
+      if (!isRecognizing) {
+        recognition.start();
+      } else {
+        recognition.stop();
+      }
+    });
+
+    recognition.onstart = () => {
+      isRecognizing = true;
+      btn.textContent = "文字起こし停止";
+      status.textContent = "音声認識中...";
+    };
+
+    recognition.onend = () => {
+      isRecognizing = false;
+      btn.textContent = "文字起こし開始";
+      status.textContent = "停止中";
+    };
+
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + '\n';
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      if (finalTranscript) {
+        output.textContent += finalTranscript;
+      }
+    };
+  </script>
+</body>
+</html>
