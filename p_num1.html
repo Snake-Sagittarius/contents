@@ -181,7 +181,7 @@
         <div class="tabs">
           <button class="tab-btn active" data-tab="usage">使用例</button>
           <button class="tab-btn" data-tab="explain">プログラム解説</button>
-          <button class="tab-btn" data-tab="mdpage">図解解説</button>
+          <button class="tab-btn" data-tab="mdpage">参考図表</button>
         </div>
         <div class="scroll">
           <div id="usage" class="tab-content active">           
@@ -220,39 +220,27 @@
               このプログラムは、素数判定の定番「エラトステネスの篩」を更に発展させたアルゴリズムで実装しています。<br>
               計算速度の向上と省メモリ化のため、主に以下の2つの工夫を取り入れています。<br><br>
               <strong>1. 小さい素数(2, 3, 5)の倍数の事前除外</strong><br>
-              すべての数を調べるのではなく、あらかじめ 2, 3, 5 の倍数を除外した数（素数候補）のみを探索の対象とします。<br>
-              以下の表は、この素数候補を30区切りで上から順に配置し、5の倍数の位置が揃うように並べたものです。<br>
-              1列右に移動すると30増える構造になっており、この表の中から5の倍数である黄色のセルを除外した値を素数候補として探索します。<br><br>
+              すべての数を調べるのではなく、あらかじめ2,3,5の倍数を除外した数（素数候補）のみを探索の対象とします。<br>
+              また、2,3,5の倍数回目の探索を省略するため、この素数候補同士を乗算した値を合成数と判定します。<br>
+              <br>
               <strong>2. 1バイト（8ビット）単位でのデータ管理</strong><br>
-              表の1列目にある「7, 11, 13, 17, 19, 23, 29, 31」は丁度8個の数列になります。<br>
-              この8個を1バイト（8ビット）の各ビットに対応させ、フラグのオン・オフで合成数（素数でない数）を管理します。<br><br>
+              以下の「ふるい落としのイメージ」の表の1行目にある「7, 11, 13, 17, 19, 23, 29, 31」は丁度8個の数列になります。<br>
+              この8個を1バイト（8ビット）の各ビットに対応させ、フラグのオン・オフで合成数か素数かを区別します。<br>
+              <br>
               <strong>■ 大まかな処理の流れ</strong><br>
-              ① <strong>準備:</strong> 上限値までの要素を管理できるバイト配列（1要素=30個分）を用意します。<br>
-              ② <strong>ふるい落とし:</strong> 素数候補から合成数を除外するために、素数候補同士を掛け合わせます。（例：7×7=49、7×11=77...）<br>
+              ① <strong>準備:</strong> ユーザーが入力した上限値まで格納できる要素数のバイト配列を用意します。<br>
+              ② <strong>ふるい落とし:</strong> 素数候補から合成数を除外するために、素数候補同士を掛け合わせます。<br>
               　 掛け合わせた結果の数値に対応する配列のビットに「合成数フラグ(1)」を立てていきます。<br>
-              ③ <strong>結果の抽出:</strong> 配列を読み取り、フラグが立っていない「0」のビットを素数として元の数値に復元し、リストに出力します。<br>
+              ③ <strong>結果の抽出:</strong> 配列を読み取り、フラグが立っていない「0」のビットを素数として元の数値に復元して出力します。<br>
             </p>
-
-            <p>【プログラムの概要】<br>
-              以下の表は、2と3の倍数を除外した6n±1の値を上から順に配置し、5の倍数の位置が揃うように左から右に並べたものです。<br>              
-              1列右に移動すると30増える構造になっており、この表の中から5の倍数である黄色のセルを除外した値を素数候補として探索します。<br>
-              素数候補から合成数(1とその数自身以外の約数を持つ数)を除外するには、この素数候補同士の乗算結果の値を除外していきます。<br><br>
-              具体的には次のような順番で乗算を行います。(5の倍数は最初から素数候補から除外)<br>
-              7×7=49、7×11=77、7×13=91、7×17=119、7×19=133 ・・・<br>
-              11×11=121、11×13=143 ・・・<br>
-              このように、乗算結果は全てこの素数候補の範囲内の値となり、その値は素数ではないと判定できます。<br><br>
-              1列目の7～23、29,31が丁度8個なので、これを1byte(8bit)に割り当ててビット単位でフラグ判定していきます。<br>
+            <hr>
+            【ふるい落としのイメージ】
+            <p>
+              合成数の除外をステップ実行
+              <input id="number" type="number" value="0" onchange="demo()" style="width: 40px;">
+              <span id="output"></span>
             </p>
-            <div>
-              <table>
-                <tr><td>
-                  合成数の除外をステップ実行
-                  <input id="number" type="number" value="0" onchange="demo()" style="width: 30px;">
-                </td></tr>
-                <tr><td id="output"></td></tr>
-              </table>
-              <table id="numberTable"></table>
-            </div>            
+            <table id="numberTable"></table>        
             <hr>
             <p>【詳細解説】<br>
               ここからは、Code Panel 内の実際のプログラムを解説していきます。<br>
@@ -263,19 +251,16 @@
               　Uint8Array()使うと0で初期化された要素を持つバイト列になります。<br>
               　#14行目の Math.ceil((num - 2) / 30) は必要な要素数の計算を行っており、例えば上の表にある151が入力された場合、要素数5の配列(40ビット)をフラグとして用意することになります。<br>
               　#16行目の Math.sqrt(num) | 0 はnumの平方根を求めてから |0 でビット論理和を使って端数を切り捨てて整数値にしています。<br>
-              　#22行目では上の表の1列目の素数候補を配列baseに格納することでループ内で使いやすくし、他の列の値はその都度計算することでメモリを節約しています。<br><br>
+              　#22行目では上の表の1行目の素数候補を配列baseに格納することでループ内で使いやすくし、他の行の値はその都度計算することでメモリを節約しています。<br><br>
               #25: ループ内でビット位置の計算を省略するため、あらかじめ配列に対応関係を格納しています。<br><br>
               #27-42: 配列flagsに対して、素数候補の中から合成数の位置にフラグを立てる処理を行っている部分です。<br>
               　合成数(素数ではない数)の探し方は、素数候補同士の乗算結果に該当する値の場所を特定し、配列flagsに記録していきます。<br>
               　合成数を探す乗算では、計算結果がnumの範囲内となる値同士で総当たりして計算します。<br>
-              　乗算に使う素数候補の位置は、上の表のイメージで言うと、1つ目の値は変数aに代入し、iが行番号、step1が列番号でループします。<br>
-              　2つ目の値は、jが行番号、step2が列番号でループし、乗算結果は変数bに代入されます。<br>
-              　#33行目では、変数bの値が存在する位置の列番号を計算しています。上の表と見比べると、この計算で求められることが確認できます。<br>
-              　#34行目では、配列flagsの要素番号を列番号、行番号をビット位置に変換して、ビット論理和代入でフラグを立てます。<br>
-              　こうすることで、他のビットに影響を与えず、該当のビット位置の既存の状態と関係なくフラグを立てることができます。<br>
-              　#36行目と#40行目は変数iとjを0～7の範囲でループさせ続けるための処理と、0の時に1つ右の列に移動させるための処理です。<br>
-              　#36行目の場合、j &amp; 7 は j÷8の余りを求める j % 8 と同じ意味の計算を、より高速なビット論理積で行っています。<br>
-              　if文の論理式では、「0 → false」、「0以外 → true」として判定しますが、それを「!」で否定しているので、j が0か8の倍数の場合を真と判定することになります。<br><br>
+              　乗算に使う素数候補は、1つ目の値(変数a)は、base[i]+step1 で計算し、iを0～7でループ、step1は30ずつ増加させてループします。<br>
+              　2つ目の値は、base[j]+step2 で同様に計算し、2つの値の乗算結果は変数bに代入されます。<br>
+              　#33行目では、変数bの値に対応するフラグを格納する配列flagsの要素番号を計算しています。ふるい落としのイメージの表の行番号だと考えて見比べると、この計算で求められることが分かります。<br>
+              　#34行目では、計算した配列flagsの要素番号を指定し、余りの値を配列setでビット位置に変換して、ビット論理和代入でフラグを立てます。<br>
+              　こうすることで、他のビットに影響を与えず、該当のビット位置の既存の状態と関係なくフラグを立てることができます。<br><br>
               #45-51: 配列flagsの末端部分で、上限値numを超えるビットを除外するためにフラグを立てています。<br><br>
               #54-76: 配列flagsから素数となる値を読み取る部分と、flagsに含まれない 2,3,5 の素数を配列bufに出力する部分です。<br>
               　#62行目は、連想配列getをあえてハードコーディングし、ビット位置と数値の変換の対応関係を見やすくしています。<br>
@@ -328,7 +313,7 @@ function primeSearch3(){
     let set = new Uint8Array(32);
     const sr =  Math.sqrt(num) | 0;    //numの平方根
     let i, j, tmp;
-    let a, b, step1, step2, limit;
+    let a, b, step1, step2;
 
     //2,3,5の倍数を除いた素数候補のベースとなる配列
     //この配列の各要素に30を足し続けると2,3,5の倍数を除いた値になる
@@ -355,7 +340,7 @@ function primeSearch3(){
     }
 
     //flagsの末端処理
-    limit = flags.length;
+    const limit = flags.length;
     tmp = (limit - 1) * 30;
     for(i = 0; i < 8; i++){
         if(base[i] + tmp > num){
@@ -578,22 +563,24 @@ function downloadText(filename, text, t){
       const color = cell.style.backgroundColor;
 
       if(color === 'yellow' || color === 'rgb(255, 0, 255)'){
-        return table.rows[r].cells[c];
-      }else{
         return null;
+      }else{
+        return table.rows[r].cells[c];
       }
     }
 
     function demo(){
       const table = document.getElementById("numberTable");
       const rows = table.rows;
-      const maxval = Number(table.rows[rows.length - 1].cells[rows[0].length - 1].textContent);
+      const r = rows.length;
+      const c = rows[0].cells.length;
+      const maxval = Number(table.rows[r - 1].cells[c - 1].textContent);
       const output = document.getElementById("output");
       const num = document.getElementById("number");
       let n = Number(num.value) | 0;
       let i;
       let j;
-      
+
       //背景色がグレーのセルを無色に戻す
       for(i = 7; i < maxval + 1; i+=2){
         const cell = getCell(table, i);
@@ -626,7 +613,7 @@ function downloadText(filename, text, t){
               if(tmp <= maxval){
                 const cell_k = getCell(table, tmp);
                 cell_k.style.backgroundColor = 'gray';
-                output.textContent = `(${a} * ${b} = ${tmp} を合成数として除外)`;
+                output.textContent = `　(${a} * ${b} = ${tmp} を除外)`;
                 count++;
                 if(count == n){ return; }
               }else{
