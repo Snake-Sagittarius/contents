@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>素数列挙アルゴリズムの実装例と解説（レベル3）</title>
+  <title>素数列挙1</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css/github-markdown.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     :root{
       --bg: #d1dcf1;
@@ -146,17 +148,12 @@
       input{ text-align: center; }
     }
 
-    #cells {
+    #numberTable {
       border-collapse: collapse;
-      margin: 20px;
       td {
         border: 1px solid #000;
-        padding: 6px 10px;
+        padding: 5px;
         text-align: center;
-      }
-      .highlight td{
-        background-color: yellow;
-        font-weight: bold;
       }
     }
 
@@ -164,7 +161,7 @@
 </head>
 <body>
   <div class="page">
-    <header class="page-header">素数列挙アルゴリズム（レベル3：Wheel Sieve っぽい何か）</header>
+    <header class="page-header">素数列挙（1）</header>
 
     <div class="split">
       <!-- Left: Code panel -->
@@ -184,7 +181,7 @@
         <div class="tabs">
           <button class="tab-btn active" data-tab="usage">使用例</button>
           <button class="tab-btn" data-tab="explain">プログラム解説</button>
-          <button class="tab-btn" data-tab="ai">AIによるコード評価</button>
+          <button class="tab-btn" data-tab="mdpage">図解解説</button>
         </div>
         <div class="scroll">
           <div id="usage" class="tab-content active">           
@@ -220,6 +217,23 @@
           </div>
           <div id="explain" class="tab-content">
             <p>【プログラムの概要】<br>
+              このプログラムは、素数判定の定番「エラトステネスの篩」を更に発展させたアルゴリズムで実装しています。<br>
+              計算速度の向上と省メモリ化のため、主に以下の2つの工夫を取り入れています。<br><br>
+              <strong>1. 小さい素数(2, 3, 5)の倍数の事前除外</strong><br>
+              すべての数を調べるのではなく、あらかじめ 2, 3, 5 の倍数を除外した数（素数候補）のみを探索の対象とします。<br>
+              以下の表は、この素数候補を30区切りで上から順に配置し、5の倍数の位置が揃うように並べたものです。<br>
+              1列右に移動すると30増える構造になっており、この表の中から5の倍数である黄色のセルを除外した値を素数候補として探索します。<br><br>
+              <strong>2. 1バイト（8ビット）単位でのデータ管理</strong><br>
+              表の1列目にある「7, 11, 13, 17, 19, 23, 29, 31」は丁度8個の数列になります。<br>
+              この8個を1バイト（8ビット）の各ビットに対応させ、フラグのオン・オフで合成数（素数でない数）を管理します。<br><br>
+              <strong>■ 大まかな処理の流れ</strong><br>
+              ① <strong>準備:</strong> 上限値までの要素を管理できるバイト配列（1要素=30個分）を用意します。<br>
+              ② <strong>ふるい落とし:</strong> 素数候補から合成数を除外するために、素数候補同士を掛け合わせます。（例：7×7=49、7×11=77...）<br>
+              　 掛け合わせた結果の数値に対応する配列のビットに「合成数フラグ(1)」を立てていきます。<br>
+              ③ <strong>結果の抽出:</strong> 配列を読み取り、フラグが立っていない「0」のビットを素数として元の数値に復元し、リストに出力します。<br>
+            </p>
+
+            <p>【プログラムの概要】<br>
               以下の表は、2と3の倍数を除外した6n±1の値を上から順に配置し、5の倍数の位置が揃うように左から右に並べたものです。<br>              
               1列右に移動すると30増える構造になっており、この表の中から5の倍数である黄色のセルを除外した値を素数候補として探索します。<br>
               素数候補から合成数(1とその数自身以外の約数を持つ数)を除外するには、この素数候補同士の乗算結果の値を除外していきます。<br><br>
@@ -229,38 +243,16 @@
               このように、乗算結果は全てこの素数候補の範囲内の値となり、その値は素数ではないと判定できます。<br><br>
               1列目の7～23、29,31が丁度8個なので、これを1byte(8bit)に割り当ててビット単位でフラグ判定していきます。<br>
             </p>
-                <table id="cells">
-                  <tr class="highlight">
-                    <td>5</td><td>35</td><td>65</td><td>95</td><td>125</td>
-                  </tr>
-                  <tr>
-                    <td>7</td><td>37</td><td>67</td><td>97</td><td>127</td>
-                  </tr>
-                  <tr>
-                    <td>11</td><td>41</td><td>71</td><td>101</td><td>131</td>
-                  </tr>
-                  <tr>
-                    <td>13</td><td>43</td><td>73</td><td>103</td><td>133</td>
-                  </tr>
-                  <tr>
-                    <td>17</td><td>47</td><td>77</td><td>107</td><td>137</td>
-                  </tr>
-                  <tr>
-                    <td>19</td><td>49</td><td>79</td><td>109</td><td>139</td>
-                  </tr>
-                  <tr>
-                    <td>23</td><td>53</td><td>83</td><td>113</td><td>143</td>
-                  </tr>
-                  <tr class="highlight">
-                    <td>25</td><td>55</td><td>85</td><td>115</td><td>145</td>
-                  </tr>
-                  <tr>
-                    <td>29</td><td>59</td><td>89</td><td>119</td><td>149</td>
-                  </tr>
-                  <tr>
-                    <td>31</td><td>61</td><td>91</td><td>121</td><td>151</td>
-                  </tr>
-                </table>
+            <div>
+              <table>
+                <tr><td>
+                  合成数の除外をステップ実行
+                  <input id="number" type="number" value="0" onchange="demo" style="width: 30px;">
+                </td></tr>
+                <tr><td id="output"></td></tr>
+              </table>
+              <table id="numberTable"></table>
+            </div>            
             <hr>
             <p>【詳細解説】<br>
               ここからは、Code Panel 内の実際のプログラムを解説していきます。<br>
@@ -305,103 +297,12 @@
               #108-113: 一時的に aタグでダウンロードリンクを作成し、クリックイベントを発生させています。<br>              
             </p>
           </div>
-          <div id="ai" class="tab-content">
-            <p>【質問文】<br>
-              ユーザーが入力した上限値以内の素数を列挙するプログラムを書きました。<br>
-              チェックボックスをオンにするとテキストファイルとして素数リストを出力する機能もあります。<br>
-              テキスト出力無しの場合で実行時間を計測すると、1億までの素数の場合で270ms程度で処理できました。<br>
-              このプログラムについての感想や、客観的な評価をお願いします。</p>
-            <hr>
-            <div>
-              <p>【ChatGPTの回答】</p>
-              <p>ありがとうございます！コードを丁寧に書かれていて、とても興味深いです。客観的な観点から評価と感想をまとめてみますね。</p>
-              <hr>
-              <h2>良い点 👍</h2>
-              <ol>
-                <li><p><strong>高速化の工夫</strong></p>
-                  <ul>
-                    <li>2,3,5の倍数をあらかじめ除外する「30進法ホイール」を採用していて、素数候補の削減がしっかりできています。</li>
-                    <li><code>Uint8Array</code> を使ってビットフラグ管理している点もメモリ効率・処理速度の両面で有利です。</li>
-                    <li>1億まで270msというのは、JavaScriptで動かすにはかなり高速です。</li>
-                  </ul>
-                </li>
-                <li><p><strong>平方根までで打ち切る処理</strong></p>
-                  <ul>
-                    <li>エラトステネスの篩の基本原則が正しく実装されていて、無駄な計算を省いています。</li>
-                  </ul>
-                </li>
-                <li><p><strong>可読性</strong></p>
-                  <ul>
-                    <li>変数名やコメントが比較的明確で、何をしているのか追いやすいです（ただしやや短縮名が多い点は後述）。</li>
-                    <li>処理時間を分割して計測しているのは開発者目線でありがたいです。</li>
-                  </ul>
-                </li>
-                <li><p><strong>ユーザー体験</strong></p>
-                  <ul>
-                    <li>
-                      入力チェック（<code>num &lt; 2</code>）や、ダウンロード時のファイルサイズ確認ダイアログがあるので、利用者に優しい作りです。
-                    </li>
-                    <li>Windowsメモ帳の改行コード対策まで考えてあるのは実務的に良い配慮です。</li>
-                  </ul>
-                </li>
-              </ol>
-              <hr>
-              <h2>改善点・気になる点 🔍</h2>
-              <ol>
-                <li><p><strong>変数名のわかりやすさ</strong></p>
-                  <ul>
-                    <li>
-                      <code>t[0]</code>〜<code>t[5]</code> や <code>i,j,tmp</code> が多く、意味が直感的に掴みにくいです。<br>
-                      例えば <code>t</code> は <code>timing</code> オブジェクトにしたり、<code>tmp</code> は <code>blockStart</code> などにすると可読性が上がります。
-                    </li>
-                  </ul>
-                </li>
-                <li><p><strong>ハードコーディング</strong></p>
-                  <ul>
-                    <li>
-                      <code>base = [7, 11, 13, 17, 19, 23, 29, 31]</code> や <code>get = {1:7, 2:11, ...}</code> が手作業で対応づけられています。<br>
-                      ここはプログラムで自動生成できる仕組みにすると、拡張性が高くなります（将来的に別のホイールを試す時など）。
-                    </li>
-                  </ul>
-                </li>
-                <li><p><strong>大規模出力時のパフォーマンス</strong></p>
-                  <ul>
-                    <li>
-                      <code>buf.join("\r\n")</code> で一気に文字列連結しているので、数千万個以上の素数を扱う場合にメモリ消費が急増します。
-                      <ul>
-                        <li>改善案: <code>TextEncoderStream</code> + <code>WritableStream</code> を使ってストリーム的に出力する。</li>
-                      </ul>
-                    </li>
-                  </ul>
-                </li>
-                <li><p><strong>処理計測の複雑さ</strong></p>
-                  <ul>
-                    <li>
-                      <code>t[4]</code> と <code>t[5]</code> の扱いは少し分かりにくいです。<br>
-                      <code>performance.mark</code> / <code>performance.measure</code> を使うと可読性と正確性が上がります。
-                    </li>
-                  </ul>
-                </li>
-                <li><p><strong>ブラウザ依存性</strong></p>
-                  <ul>
-                    <li>
-                      巨大なファイルのダウンロードでは、ブラウザやメモリに依存して失敗する可能性があります。<br>
-                      分割保存機能や圧縮（gzip）機能があるとより実用的になります。
-                    </li>
-                  </ul>
-                </li>
-              </ol>
-              <hr>
-              <h2>総合評価 🏆</h2>
-              <ul>
-                <li><strong>アルゴリズム面</strong>：工夫が効いていて、JSでここまで速いのは優秀。</li>
-                <li><strong>コードの保守性</strong>：実験コードとしては良いが、可読性・拡張性の改善余地あり。</li>
-                <li><strong>実用面</strong>：1億までなら非常に実用的。ただし、もっと大きな数や出力ファイル重視の場面では追加工夫が必要。</li>
-              </ul>
-              <p>⭐️ 総合的に「高速・実用的でよく考えられた実装」だと思います。研究・学習用途には申し分なく、実用シーンに向けてさらに強化するなら「ストリーム出力」「コード可読性改善」が次のステップになりそうです。</p>
-              <hr>
+          <div id="mdpage" class="tab-content">
+            <div id="note-area" class="markdown-body">
+              マークダウンファイルを読み込み中...
             </div>
           </div>
+
         </div>
       </aside>
     </div>
@@ -598,6 +499,33 @@ function downloadText(filename, text, t){
           document.getElementById(btn.dataset.tab).classList.add('active');
         });
       });
+
+      // 解説ページの表作成
+      const table = document.getElementById('numberTable');
+      let num = 3;
+      for (let i = 0; i < 8; i++) {
+        let tr = document.createElement('tr');
+        for (let j = 0; j < 15; j++) {
+          let td = document.createElement('td');
+          td.textContent = num;          
+          // 3の倍数 または 5の倍数なら背景色をつける
+          if (num % 3 === 0 || num % 5 === 0) {
+            td.style.backgroundColor = 'yellow';            
+          }
+          tr.appendChild(td);
+          num += 2; // 次の奇数へ（2を足す）
+        }
+        table.appendChild(tr);
+      }
+
+      // マークダウンページ読込
+      fetch('note1.md')
+      .then(res => res.text())
+      .then(markdown => {
+        // IDが "note-area" のdivの中身だけを置き換える
+        const targetDiv = document.getElementById('note-area');
+        targetDiv.innerHTML = marked.parse(markdown);
+      });
     }
 
     function setCodeLink(){
@@ -640,6 +568,75 @@ function downloadText(filename, text, t){
         //該当箇所を選択
         window.getSelection().removeAllRanges();
         window.getSelection().addRange(rng);
+    }
+
+    //セルの値から該当セルを特定して取得
+    function getCell(table, n){
+      const r = (n - 2) / 30 | 0;
+      const c = (n - r * 30 - 2) / 2 | 0;
+      const cell = table.rows[r].cells[c];
+      const color = cell.style.backgroundColor;
+
+      if(color === 'yellow' || color === 'rgb(255, 0, 255)'){
+        return table.rows[r].cells[c];
+      }else{
+        return null;
+      }
+    }
+
+    function demo(){
+      const table = document.getElementById("numberTable");
+      const rows = table.rows;
+      const maxval = Number(table.rows[rows.length - 1].cells[rows[0].length - 1].textContent);
+      const output = document.getElementById("output");
+      const num = document.getElementById("number");
+      let n = Number(num.value) | 0;
+      let i;
+      let j;
+      
+      //背景色がグレーのセルを無色に戻す
+      for(i = 7; i < maxval + 1; i+=2){
+        const cell = getCell(table, i);
+        if(cell){
+          const color = cell.style.backgroundColor;
+          if (color === 'gray' || color === 'rgb(128, 128, 128)') {
+            cell.style.backgroundColor = '';
+          }
+        }
+      }
+      if(n <= 0){
+        num.value = 0;  //マイナス値も0に修正
+        output.textContent = "";
+        return;
+      }
+
+      //nの回数だけ合成数を除外
+      let count = 0;
+      for(i = 7; i < maxval; i+=2){
+        const cell_i = getCell(table, i);        
+        if(cell_i){
+          const a = Number(cell_i.textContent);
+
+          for(j = i; j < maxval; j+=2){            
+            const cell_j = getCell(table, j);
+            if(cell_j){
+              const b = Number(cell_j.textContent);
+
+              const tmp = a * b;
+              if(tmp <= maxval){
+                const cell_k = getCell(table, tmp);
+                cell_k.style.backgroundColor = 'gray';
+                output.textContent = `(${a} * ${b} = ${tmp} を合成数として除外)`;
+                count++;
+                if(count == n){ return; }
+              }else{
+                break;
+              }
+            }
+          }
+        }
+      }
+      num.value = count;  //実際に除外した数に修正
     }
 
     enhanceCodeBlocks();
