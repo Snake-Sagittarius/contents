@@ -70,6 +70,11 @@
       padding: 0;
     }
 
+    /* 補足説明タブ（#mdpage）内のスクロール時のみ、画面全体へのスクロール連動を防止 */
+    #mdpage {
+      overscroll-behavior: contain;
+    }
+
     /* Left code panel */
     .code-panel {
       margin: 3px;
