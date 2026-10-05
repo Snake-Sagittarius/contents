@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>素数列挙アルゴリズムの実装例と解説（レベル4）</title>
+  <title>素数列挙2</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css/github-markdown.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     :root{
       --bg: #d1dcf1;
@@ -164,7 +166,7 @@
 </head>
 <body>
   <div class="page">
-    <header class="page-header">素数列挙アルゴリズム（レベル4：多段変速式Wheel Sieve みたいなもの）</header>
+    <header class="page-header">素数列挙（1）</header>
 
     <div class="split">
       <!-- Left: Code panel -->
@@ -184,7 +186,7 @@
         <div class="tabs">
           <button class="tab-btn active" data-tab="usage">使用例</button>
           <button class="tab-btn" data-tab="explain">プログラム解説</button>
-          <button class="tab-btn" data-tab="ai">AIによるコード評価</button>
+          
         </div>
         <div class="scroll">
           <div id="usage" class="tab-content active">           
@@ -220,99 +222,9 @@
           <div id="explain" class="tab-content">
             <p>【プログラムの概要】</p><br>
 
-            <h3>作成中・・・(´･ω･｀)</h3>
+            <h3>準備中</h3>
           </div>
-          <div id="ai" class="tab-content">
-            <p>【質問文】<br>
-              ユーザーが入力した上限値以内の素数を列挙するプログラムを書きました。<br>
-              チェックボックスをオンにするとテキストファイルとして素数リストを出力する機能もあります。<br>
-              テキスト出力無しの場合で実行時間を計測すると、以下のような時間で処理でき、ほぼO(N)の計算量になっています。<br><br>
-              1億までの素数：502ms程度<br>
-              2億までの素数：1102ms程度<br>
-              3億までの素数：1802ms程度<br>
-              4億までの素数：2374ms程度<br>
-              5億までの素数：3127ms程度<br>
-              6億までの素数：3498ms程度<br>
-              7億までの素数：3955ms程度<br><br>
-              このプログラムについての感想や、客観的な評価をお願いします。</p>
-            <hr>
-            <div>
-              <p>【ChatGPTの回答】</p>
-                <div><p>読ませていただきました。率直な感想と、客観的な評価を整理しますね。</p>
-                <hr>
-                <h2>✅ 良い点</h2>
-                <ol>
-                  <li><p><strong>非常に高速</strong></p>
-                    <ul>
-                      <li>計測結果を見ると、ほぼ線形に近いスケーリングで処理できています。</li>
-                      <li>例えば「1億まで 502ms → 7億まで 3955ms」という伸び方は、O(N log log N) 型のエラトステネスの篩に匹敵、あるいはそれ以上に効率的です。</li>
-                      <li>ブラウザの JavaScript でこれだけ大規模な範囲を扱えるのは素晴らしいです。</li>
-                    </ul>
-                  </li>
-                  <li><p><strong>メモリ効率を工夫している</strong></p>
-                    <ul>
-                      <li><code>Uint8Array</code> を使ってビットフラグ管理をしている点は、典型的な篩の「boolean配列」よりメモリ効率が高いです。</li>
-                      <li>7億までの範囲を扱っても実用的なサイズに収まります。</li>
-                    </ul>
-                  </li>
-                  <li><p><strong>UI と計測の工夫</strong></p>
-                    <ul>
-                      <li>DOM に「個数」「最大素数」「処理時間」などを表示する仕組みは、使う人にとって理解しやすい。</li>
-                      <li>ファイル出力時に <code>window.confirm</code> でサイズを提示しているのも親切。</li>
-                    </ul>
-                  </li>
-                  <li><p><strong>実装としてユニーク</strong></p>
-                    <ul>
-                      <li>典型的な単純篩アルゴリズムとは違い、素数リストを動的に生成・整理しつつ「合成数を後から除去」している。</li>
-                      <li><code>binarySearch</code> を駆使しているのも、よく考えられた工夫に見えます。</li>
-                    </ul>
-                  </li>
-                </ol>
-                <hr>
-                <h2>⚖️ 改善や注意点（客観的評価）</h2>
-                <ol>
-                  <li><p><strong>アルゴリズムの説明が必要</strong></p>
-                    <ul>
-                      <li>コードだけ見ると「なぜこの処理順序で正しい素数リストが得られるのか」が直感的には分かりにくいです。</li>
-                      <li>読みやすさや再利用性を重視するなら、エラトステネスや区間篩といった標準的アルゴリズムをベースにした方が保守性は高くなります。</li>
-                    </ul>
-                  </li>
-                  <li><p><strong>処理時間の変動</strong></p>
-                    <ul>
-                      <li>6億 (3498ms) → 7億 (3955ms) の間では伸び方が少し鈍化しています。</li>
-                      <li>メモリキャッシュヒット率や GC（ガーベジコレクション）の影響も考えられるので、大きな入力でさらにテストすると興味深いです。</li>
-                    </ul>
-                  </li>
-                  <li><p><strong>可読性</strong></p>
-                    <ul>
-                      <li>変数名が <code>p</code>, <code>i</code>, <code>j</code>, <code>k</code>, <code>n</code>, <code>cnt</code> といった短縮形ばかりで、ロジックが追いにくい。</li>
-                      <li>コメントをもう少し丁寧にすると、第三者が理解しやすくなります。</li>
-                    </ul>
-                  </li>
-                  <li><p><strong>実行環境依存</strong></p>
-                    <ul>
-                      <li>JavaScript の <code>performance.now()</code> はブラウザ依存です。</li>
-                      <li>Node.js 環境でも動かせるようにすれば、より汎用的に性能比較ができます。</li>
-                    </ul>
-                  </li>
-                  <li><p><strong>理論的計算量</strong></p>
-                    <ul>
-                      <li>計測結果は O(N) に見えますが、実際には「篩的な性質 + 合成数の除去ループ」なので、厳密には O(N log log N) に近いはず。</li>
-                      <li>それでも N が数億程度ならほぼ線形に感じられるのは確かに立派です。</li>
-                    </ul>
-                  </li>
-                </ol>
-                <hr>
-                <h2>💡 総合評価</h2>
-                <ul>
-                  <li><strong>「ブラウザ上でこれだけ大きな範囲の素数を高速に列挙できるのは驚異的」</strong> というのが第一印象です。</li>
-                  <li>一般的な素数列挙コードと比べると「独自の工夫を盛り込んだ実験的アルゴリズム」という評価になります。</li>
-                  <li>実用性だけでなく「アルゴリズム研究やパフォーマンステストとしても面白い」プログラムだと思います。</li>
-                </ul>
-                <hr>
-              </div>
-            </div>
-          </div>
+          
         </div>
       </aside>
     </div>
