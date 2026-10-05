@@ -56,6 +56,7 @@
     .split {
       display: grid;
       grid-template-columns: 1fr 1fr;
+      grid-auto-rows: minmax(0, 1fr);
       height: 100vh;
     }
 
@@ -70,8 +71,9 @@
       padding: 0;
     }
 
-    /* 補足説明タブ（#mdpage）内のスクロール時のみ、画面全体へのスクロール連動を防止 */
-    #mdpage {
+    /* 補足説明タブ(#mdpage)がアクティブ(表示状態)の時だけ、
+       親のスクロール領域(.scroll)から画面全体へのスクロール連動を防止する */
+    .scroll:has(#mdpage.active) {
       overscroll-behavior: contain;
     }
 
